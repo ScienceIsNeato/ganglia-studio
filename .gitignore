@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.coverage
+.env
+.venv
+venv/
+*.mp4
+*.mp3
+*.wav
+*.jpg
+*.png
+generated_videos/

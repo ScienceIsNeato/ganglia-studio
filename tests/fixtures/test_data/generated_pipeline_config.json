@@ -1,0 +1,28 @@
+{
+    "style": "urban street photography",
+    "music_backend": "suno",
+    "story": [
+        "Neon signs flicker in the midnight rain, casting electric shadows on empty streets",
+        "A lone saxophonist plays jazz beneath the subway arch, his melody echoing through time",
+        "City buses rumble past graffiti murals that tell stories of dreams and revolution",
+        "In a 24-hour diner, strangers share coffee and conversations that bridge worlds",
+        "Through steamed windows, night shift workers watch the city's pulse ebb and flow",
+        "A street poet crafts verses on cardboard, words glowing like urban constellations",
+        "Skateboarders glide through concrete canyons, defying gravity and expectations",
+        "Street artists transform blank walls into windows to impossible dimensions",
+        "Under bridge archways, breakdancers spin tales without words, bodies electric",
+        "Food truck vendors serve midnight feasts, their spices painting the air with warmth",
+        "Emergency lights dance across rain-slicked asphalt like liquid rubies",
+        "As dawn breaks over the skyline, the city awakens to endless possibilities"
+    ],
+    "title": "Urban Rhythms",
+    "caption_style": "dynamic",
+    "background_music": {
+        "file": null,
+        "prompt": "A smooth jazz hip-hop fusion with atmospheric city sounds and mellow beats"
+    },
+    "closing_credits": {
+        "file": null,
+        "prompt": "A laid-back lofi outro with gentle piano and vinyl crackle"
+    }
+} 

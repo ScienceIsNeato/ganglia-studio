@@ -1,0 +1,21 @@
+{
+    "style": "cinematic dark fantasy",
+    "music_backend": "suno",
+    "story": [
+        "In the depths of an ancient forest, twisted branches reach toward a moonless sky",
+        "A weathered stone archway stands alone, covered in glowing runes of forgotten magic",
+        "Wisps of ethereal light dance through the air, leading deeper into the darkness",
+        "A shadowy figure emerges from the mist, their cloak billowing in an unseen wind",
+        "Ancient secrets await those brave enough to cross the threshold"
+    ],
+    "title": "The Gateway",
+    "caption_style": "dynamic",
+    "background_music": {
+        "file": "tests/unit/ttv/test_data/background_music.mp3",
+        "prompt": null
+    },
+    "closing_credits": {
+        "file": "tests/unit/ttv/test_data/closing_credits.mp3",
+        "prompt": null
+    }
+}
