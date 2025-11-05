@@ -3,7 +3,7 @@ import time
 import json
 from datetime import datetime
 import requests
-from lyrics_lib import LyricsGenerator
+from ganglia_studio.music.lyrics_lib import LyricsGenerator
 from ganglia_common.logger import Logger
 from ganglia_studio.music.backends.base import MusicBackend
 from ganglia_studio.music.backends.suno_interface import SunoInterface

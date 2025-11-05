@@ -8,7 +8,7 @@ import os
 import time
 import subprocess
 from ganglia_common.logger import Logger
-from music_backends import MetaMusicBackend
+from ganglia_studio.music.backends.meta import MetaMusicBackend
 from ganglia_studio.music.backends.suno_api_org import SunoApiOrgBackend
 from ganglia_studio.music.backends.foxai_suno import FoxAISunoBackend
 from ganglia_studio.video.config_loader import TTVConfig

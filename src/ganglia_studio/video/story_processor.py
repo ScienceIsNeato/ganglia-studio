@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Tuple, Any
 
 # First party imports
 from ganglia_common.logger import Logger
-from music_lib import MusicGenerator
+from ganglia_studio.music.music_lib import MusicGenerator
 from ganglia_studio.video.config_loader import TTVConfig
 from ganglia_common.tts.google_tts import GoogleTTS
 from utils import ffmpeg_thread_manager
