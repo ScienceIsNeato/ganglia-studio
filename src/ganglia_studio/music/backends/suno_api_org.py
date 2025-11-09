@@ -7,7 +7,7 @@ import requests
 from ganglia_common.logger import Logger
 from ganglia_studio.music.backends.base import MusicBackend
 from ganglia_studio.music.backends.suno_interface import SunoInterface
-from utils import get_tempdir
+from ganglia_common.utils.file_utils import get_tempdir
 from ganglia_common.utils.retry_utils import exponential_backoff
 
 class SunoApiOrgBackend(MusicBackend, SunoInterface):

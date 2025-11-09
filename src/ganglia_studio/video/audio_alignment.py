@@ -25,7 +25,7 @@ import whisper
 
 # Local imports
 from ganglia_common.logger import Logger
-from utils import exponential_backoff
+from ganglia_common.utils.file_utils import exponential_backoff
 from .captions import CaptionEntry
 
 

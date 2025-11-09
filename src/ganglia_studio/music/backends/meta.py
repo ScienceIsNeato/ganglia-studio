@@ -20,7 +20,7 @@ from transformers import AutoProcessor, MusicgenForConditionalGeneration
 # Local imports
 from ganglia_common.logger import Logger
 from ganglia_studio.music.backends.base import MusicBackend
-from utils import get_tempdir
+from ganglia_common.utils.file_utils import get_tempdir
 
 # Set environment variables to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"

@@ -12,12 +12,12 @@ import json
 from typing import Dict, Any, Optional, List
 import uuid
 
-from pubsub import get_pubsub, Event, EventType
+from ganglia_common.pubsub import get_pubsub, Event, EventType
 from ganglia_studio.video.ttv import text_to_video
 from ganglia_studio.video.config_loader import load_input
-from parse_inputs import parse_tts_interface
+from ganglia_core.interface.parse_inputs import parse_tts_interface
 from ganglia_common.logger import Logger
-from utils import get_timestamped_ttv_dir, get_config_path
+from ganglia_common.utils.file_utils import get_timestamped_ttv_dir, get_config_path
 from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
 
 

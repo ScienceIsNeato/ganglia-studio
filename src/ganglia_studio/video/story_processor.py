@@ -21,7 +21,7 @@ from ganglia_common.logger import Logger
 from ganglia_studio.music.music_lib import MusicGenerator
 from ganglia_studio.video.config_loader import TTVConfig
 from ganglia_common.tts.google_tts import GoogleTTS
-from utils import ffmpeg_thread_manager
+from ganglia_studio.utils.ffmpeg_utils import ffmpeg_thread_manager
 
 # Local imports
 from .audio_alignment import create_word_level_captions

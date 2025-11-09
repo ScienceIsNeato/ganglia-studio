@@ -3,7 +3,7 @@ from .story_processor import process_story
 from .final_video_generation import assemble_final_video
 from ganglia_common.tts.google_tts import GoogleTTS
 from ganglia_common.logger import Logger
-from utils import get_timestamped_ttv_dir
+from ganglia_common.utils.file_utils import get_timestamped_ttv_dir
 import traceback
 
 # TODO: remove skip_generation globally, make query_dispatcher required
