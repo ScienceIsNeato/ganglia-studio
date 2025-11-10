@@ -7,6 +7,7 @@ dist/
 .pytest_cache/
 .coverage
 .env
+.envrc
 .venv
 venv/
 *.mp4
@@ -15,3 +16,5 @@ venv/
 *.jpg
 *.png
 generated_videos/
+COMMIT_MSG.txt
+config/ttv_config.json

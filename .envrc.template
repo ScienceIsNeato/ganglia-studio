@@ -1,0 +1,25 @@
+# ganglia-studio Environment Variables
+# Copy this file to .envrc and fill in your actual values
+# Then run: source .envrc
+
+# OpenAI API (required for image generation, story generation)
+export OPENAI_API_KEY="your-openai-api-key-here"
+
+# Stability AI (optional - alternative image generation)
+export STABILITY_API_KEY="your-stability-api-key-here"
+
+# Suno API (optional - for music generation)
+export SUNO_API_KEY="your-suno-api-key-here"
+
+# Google Cloud (optional - for TTS via ganglia-common)
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/service-account-key.json"
+export GCS_BUCKET_NAME="your-gcs-bucket-name"
+
+# Model settings
+export IMAGE_MODEL="dall-e-3"  # or "stable-diffusion"
+export MUSIC_BACKEND="suno"    # or "meta" for MusicGen
+
+# Output directories
+export GANGLIA_OUTPUT_DIR="./generated_videos"
+export GANGLIA_LOGS_DIR="./logs"
+

@@ -1,3 +1,7 @@
+# Install the package first
+-e .
+
+# Development tools
 pytest>=7.3.1
 pytest-asyncio>=0.21.1
 pytest-timeout>=2.1.0
