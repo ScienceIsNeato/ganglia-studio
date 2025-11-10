@@ -7,7 +7,21 @@ from ganglia_common.logger import Logger
 from typing import Optional, Any, Dict
 from datetime import datetime
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Lazy initialization of OpenAI client to avoid requiring API key at import time
+_client = None
+
+def get_openai_client():
+    """Get or create the OpenAI client instance."""
+    global _client
+    if _client is None:
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "OPENAI_API_KEY environment variable must be set. "
+                "Please add it to your .envrc file."
+            )
+        _client = OpenAI(api_key=api_key)
+    return _client
 
 def generate_filtered_story(context, style, story_title, query_dispatcher):
     """
@@ -115,6 +129,7 @@ def generate_movie_poster(
     for safety_attempt in range(safety_retries):
         for attempt in range(retries):
             try:
+                client = get_openai_client()
                 response = client.images.generate(
                     model="dall-e-3",
                     prompt=prompt,

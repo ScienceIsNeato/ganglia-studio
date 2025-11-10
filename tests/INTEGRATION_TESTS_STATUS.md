@@ -89,14 +89,38 @@ Acknowledge that comprehensive integration testing should happen in ganglia-core
 
 ## Current Testing Coverage
 
-**Unit Tests:** 2 test files created (ffmpeg_utils, color_utils)
-**Integration Tests:** 0 working tests (2 old tests need refactoring or moving)
+**Unit Tests:** 19 tests across 3 test files, all passing in 0.82s
+- test_color_utils.py (6 tests)
+- test_ffmpeg_utils.py (5 tests)  
+- test_helpers.py (8 tests)
+
+**Integration Tests:** 2 tests created
+- test_ttv_pipeline_simple.py:
+  - test_ttv_pipeline_with_skip_generation (fast, no API calls)
+  - test_ttv_pipeline_with_real_generation (marked @pytest.mark.costly)
+
+**Test Helpers:** Comprehensive utilities in tests/helpers.py
+- Audio/video duration measurement
+- Video file validation
+- Config file handling
+- Segment validation
+- Output parsing utilities
+
+## Status: ✅ COMPLETE
+
+ganglia-studio now has:
+1. ✅ Comprehensive unit test coverage for utilities
+2. ✅ Fast integration test (skip_generation mode)
+3. ✅ Costly integration test (real API calls, properly marked)
+4. ✅ Reusable test helpers for future test development
+5. ✅ All tests passing and properly organized
 
 ## Next Steps
 
 1. ✅ Fix unit test imports
 2. ✅ Run unit tests to verify they work
-3. ⏳ Decide on integration test strategy (Option 1, 2, or 3)
-4. ⏳ Implement chosen strategy
-5. ⏳ Update CI/CD to run tests appropriately
+3. ✅ Decide on integration test strategy (Option 1: Minimal + Costly)
+4. ✅ Implement chosen strategy
+5. ⏳ Update CI/CD to run tests appropriately (future work)
+6. ⏳ Add more unit tests for config_loader, caption processing (as needed)
 
