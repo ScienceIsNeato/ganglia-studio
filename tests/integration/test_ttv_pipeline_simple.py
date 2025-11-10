@@ -21,6 +21,7 @@ from tests.helpers import (
 
 
 @pytest.mark.integration
+@pytest.mark.costly  # Requires TTS even with skip_generation
 def test_ttv_pipeline_with_skip_generation():
     """Test TTV pipeline with skip_generation=True (no API calls).
     
@@ -31,7 +32,7 @@ def test_ttv_pipeline_with_skip_generation():
     4. Final video is assembled
     5. Output files are valid
     
-    This test should be fast and not require API keys.
+    Note: Even though skip_generation=True, this test still requires TTS for audio.
     """
     # Create a test config
     test_dir = os.path.join(get_tempdir(), "test_ttv_simple")
