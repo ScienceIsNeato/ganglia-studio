@@ -1,10 +1,13 @@
-from .config_loader import load_input
-from .story_processor import process_story
-from .final_video_generation import assemble_final_video
-from ganglia_common.tts.google_tts import GoogleTTS
-from ganglia_common.logger import Logger
-from ganglia_common.utils.file_utils import get_timestamped_ttv_dir
 import traceback
+
+from ganglia_common.logger import Logger
+from ganglia_common.tts.google_tts import GoogleTTS
+from ganglia_common.utils.file_utils import get_timestamped_ttv_dir
+
+from .config_loader import load_input
+from .final_video_generation import assemble_final_video
+from .story_processor import process_story
+
 
 # TODO: remove skip_generation globally, make query_dispatcher required
 def text_to_video(config_path, skip_generation=False, tts=None, query_dispatcher=None):
@@ -43,7 +46,13 @@ def text_to_video(config_path, skip_generation=False, tts=None, query_dispatcher
             tts = GoogleTTS()
 
         # Process story and generate video segments
-        video_segments, background_music_path, closing_credits_path, movie_poster_path, closing_credits_lyrics = process_story(
+        (
+            video_segments,
+            background_music_path,
+            closing_credits_path,
+            movie_poster_path,
+            closing_credits_lyrics,
+        ) = process_story(
             tts=tts,
             style=config.style,
             story=config.story,
@@ -51,7 +60,7 @@ def text_to_video(config_path, skip_generation=False, tts=None, query_dispatcher
             query_dispatcher=query_dispatcher,
             story_title=config.title,
             config=config,
-            output_dir=ttv_dir
+            output_dir=ttv_dir,
         )
 
         # Check for errors (i.e. no video segments)
@@ -72,7 +81,7 @@ def text_to_video(config_path, skip_generation=False, tts=None, query_dispatcher
             song_with_lyrics_path=closing_credits_path,
             movie_poster_path=movie_poster_path,
             config=config,
-            closing_credits_lyrics=closing_credits_lyrics
+            closing_credits_lyrics=closing_credits_lyrics,
         )
 
     except Exception as e:

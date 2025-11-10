@@ -13,24 +13,36 @@ import json
 import os
 import subprocess
 import time
-from typing import Dict, List, Optional, Tuple, Any
-
+from typing import Any
 
 # First party imports
 from ganglia_common.logger import Logger
-from ganglia_studio.music.music_lib import MusicGenerator
-from ganglia_studio.video.config_loader import TTVConfig
 from ganglia_common.tts.google_tts import GoogleTTS
+
+from ganglia_studio.music.music_lib import MusicGenerator
 from ganglia_studio.utils.ffmpeg_utils import ffmpeg_thread_manager
+from ganglia_studio.video.config_loader import TTVConfig
 
 # Local imports
 from .audio_alignment import create_word_level_captions
 from .captions import CaptionEntry, create_dynamic_captions, create_static_captions
-from .image_generation import generate_image, generate_blank_image
+from .image_generation import generate_blank_image, generate_image
 from .story_generation import generate_movie_poster
 from .video_generation import create_video_segment
 
-def process_sentence(i, sentence, context, style, total_images, tts, skip_generation, query_dispatcher, config, output_dir):
+
+def process_sentence(
+    i,
+    sentence,
+    context,
+    style,
+    total_images,
+    tts,
+    skip_generation,
+    query_dispatcher,
+    config,
+    output_dir,
+):
     """Process a single sentence into a video segment with audio and captions.
 
     This function handles the complete pipeline for converting a single sentence into a video segment:
@@ -63,11 +75,11 @@ def process_sentence(i, sentence, context, style, total_images, tts, skip_genera
         - Video segment creation fails
         - Caption addition fails (falls back to raw video)
     """
-    thread_id = f"[Thread {i+1}/{total_images}]"
+    thread_id = f"[Thread {i + 1}/{total_images}]"
     Logger.print_info(f"{thread_id} Processing sentence: {sentence}")
 
     # Get preloaded images directory from config
-    preloaded_images_dir = getattr(config, 'preloaded_images_dir', None)
+    preloaded_images_dir = getattr(config, "preloaded_images_dir", None)
 
     # Generate image for this sentence
     filename = None
@@ -83,7 +95,7 @@ def process_sentence(i, sentence, context, style, total_images, tts, skip_genera
             query_dispatcher,
             preloaded_images_dir=preloaded_images_dir,
             thread_id=thread_id,
-            output_dir=output_dir
+            output_dir=output_dir,
         )
         if not success:
             return None, i
@@ -106,7 +118,7 @@ def process_sentence(i, sentence, context, style, total_images, tts, skip_genera
             return None, i
 
     # Get caption style from config
-    caption_style = getattr(config, 'caption_style', 'static')
+    caption_style = getattr(config, "caption_style", "static")
 
     if caption_style == "dynamic":
         # Add dynamic captions using word-level alignment
@@ -127,7 +139,7 @@ def process_sentence(i, sentence, context, style, total_images, tts, skip_genera
                 captions=captions,
                 output_path=final_segment_path,
                 min_font_size=32,
-                max_font_ratio=1.5  # Max will be 48 (1.5x the min)
+                max_font_ratio=1.5,  # Max will be 48 (1.5x the min)
             )
 
         if captioned_path:
@@ -140,13 +152,13 @@ def process_sentence(i, sentence, context, style, total_images, tts, skip_genera
         # Add static captions
         Logger.print_info(f"{thread_id} Adding static captions to video segment.")
         final_segment_path = os.path.join(output_dir, f"segment_{i}.mp4")
-        captions = [CaptionEntry(sentence, 0.0, float('inf'))]  # Show for entire duration
+        captions = [CaptionEntry(sentence, 0.0, float("inf"))]  # Show for entire duration
         with ffmpeg_thread_manager:
             captioned_path = create_static_captions(
                 input_video=initial_segment_path,
                 captions=captions,
                 output_path=final_segment_path,
-                font_size=40
+                font_size=40,
             )
 
         if captioned_path:
@@ -156,17 +168,18 @@ def process_sentence(i, sentence, context, style, total_images, tts, skip_genera
             Logger.print_error(f"{thread_id} Failed to add captions, using raw video")
             return initial_segment_path, i
 
+
 def process_story(
     tts: GoogleTTS,
     style: str,
-    story: List[str],
+    story: list[str],
     output_dir: str,
     config: TTVConfig,
     skip_generation: bool = False,
-    query_dispatcher: Optional[Any] = None,
-    story_title: Optional[str] = None,
-    thread_id: Optional[str] = None
-) -> Tuple[List[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
+    query_dispatcher: Any | None = None,
+    story_title: str | None = None,
+    thread_id: str | None = None,
+) -> tuple[list[str], str | None, str | None, str | None, str | None]:
     """Process a complete story into segments.
 
     Args:
@@ -198,9 +211,7 @@ def process_story(
             raise ValueError("No story provided")
 
         total_segments = len(story)
-        Logger.print_info(
-            f"{thread_prefix}Processing {total_segments} story segments"
-        )
+        Logger.print_info(f"{thread_prefix}Processing {total_segments} story segments")
 
         # Initialize return values and futures
         movie_poster_path = None
@@ -221,36 +232,32 @@ def process_story(
             # Submit movie poster task if configured
             movie_poster_future = None
             if not skip_generation and story_title and query_dispatcher:
-                story_json = json.dumps({
-                    "style": style,
-                    "title": story_title,
-                    "story": story
-                })
+                story_json = json.dumps({"style": style, "title": story_title, "story": story})
                 movie_poster_future = executor.submit(
                     generate_movie_poster,
                     story_json,
                     style,
                     story_title,
                     query_dispatcher,
-                    output_dir=output_dir
+                    output_dir=output_dir,
                 )
-                futures.append(('movie_poster', movie_poster_future))
+                futures.append(("movie_poster", movie_poster_future))
 
             # Submit background music task if configured
             background_music_future = None
-            if hasattr(config, 'background_music') and config.background_music:
+            if hasattr(config, "background_music") and config.background_music:
                 background_music_future = executor.submit(
                     music_generator.get_background_music,
                     config=config,
                     output_dir=output_dir,
                     skip_generation=skip_generation,
-                    thread_id=f"{thread_id}_background" if thread_id else "background"
+                    thread_id=f"{thread_id}_background" if thread_id else "background",
                 )
-                futures.append(('background_music', background_music_future))
+                futures.append(("background_music", background_music_future))
 
             # Submit closing credits task if configured
             closing_credits_future = None
-            if hasattr(config, 'closing_credits') and config.closing_credits:
+            if hasattr(config, "closing_credits") and config.closing_credits:
                 closing_credits_future = executor.submit(
                     music_generator.get_closing_credits,
                     config=config,
@@ -258,11 +265,13 @@ def process_story(
                     output_dir=output_dir,
                     skip_generation=skip_generation,
                     query_dispatcher=query_dispatcher,
-                    thread_id=f"{thread_id}_credits" if thread_id else "credits"
+                    thread_id=f"{thread_id}_credits" if thread_id else "credits",
                 )
-                futures.append(('closing_credits', closing_credits_future))
-            elif hasattr(config, 'closing_credits'):
-                Logger.print_warning(f"{thread_prefix}Closing credits configured but no file or prompt provided")
+                futures.append(("closing_credits", closing_credits_future))
+            elif hasattr(config, "closing_credits"):
+                Logger.print_warning(
+                    f"{thread_prefix}Closing credits configured but no file or prompt provided"
+                )
 
             # Submit video segment tasks
             segment_futures = []
@@ -278,10 +287,10 @@ def process_story(
                     skip_generation=skip_generation,
                     query_dispatcher=query_dispatcher,
                     config=config,
-                    output_dir=output_dir
+                    output_dir=output_dir,
                 )
                 segment_futures.append((i, future))
-                futures.append(('segment', (i, future)))
+                futures.append(("segment", (i, future)))
 
             # Process results as they complete
             segments = []
@@ -289,36 +298,44 @@ def process_story(
 
             for task_type, future in futures:
                 try:
-                    if task_type == 'movie_poster':
+                    if task_type == "movie_poster":
                         movie_poster_path = future.result()
                         if movie_poster_path is None:
-                            Logger.print_warning(f"{thread_prefix}Failed to generate movie poster, closing credits may be affected")
+                            Logger.print_warning(
+                                f"{thread_prefix}Failed to generate movie poster, closing credits may be affected"
+                            )
 
-                    elif task_type == 'background_music':
+                    elif task_type == "background_music":
                         background_music_path = future.result()
                         if background_music_path is None:
-                            Logger.print_warning(f"{thread_prefix}Background music generation failed - continuing without background music")
+                            Logger.print_warning(
+                                f"{thread_prefix}Background music generation failed - continuing without background music"
+                            )
                             # Don't return None for everything, just continue without background music
 
-                    elif task_type == 'closing_credits':
+                    elif task_type == "closing_credits":
                         closing_credits_path, closing_credits_lyrics = future.result()
                         if closing_credits_path is None:
                             Logger.print_error(f"{thread_prefix}Closing credits generation failed")
                             # Don't return None for everything, just continue without credits
 
-                    elif task_type == 'segment':
+                    elif task_type == "segment":
                         i, segment_future = future
                         segment = segment_future.result()
                         if segment and segment[0]:  # If segment was generated successfully
                             segments.append(segment[0])
                             segment_indices.append(segment[1])
                         else:
-                            Logger.print_error(f"{thread_prefix}Failed to process segment {segment[1] if segment else 'unknown'}")
+                            Logger.print_error(
+                                f"{thread_prefix}Failed to process segment {segment[1] if segment else 'unknown'}"
+                            )
 
                 except Exception as e:
                     Logger.print_error(f"{thread_prefix}Error processing task: {str(e)}")
-                    if task_type == 'background_music':  # Background music failure is not critical
-                        Logger.print_warning(f"{thread_prefix}Background music generation failed with error - continuing without background music")
+                    if task_type == "background_music":  # Background music failure is not critical
+                        Logger.print_warning(
+                            f"{thread_prefix}Background music generation failed with error - continuing without background music"
+                        )
                         background_music_path = None
                     continue
 
@@ -331,14 +348,20 @@ def process_story(
             segments_with_indices.sort(key=lambda x: x[1])
             segments = [s[0] for s in segments_with_indices]
 
-            Logger.print_info(f"{thread_prefix}Successfully processed {len(segments)}/{total_segments} segments")
+            Logger.print_info(
+                f"{thread_prefix}Successfully processed {len(segments)}/{total_segments} segments"
+            )
 
-        return segments, background_music_path, closing_credits_path, movie_poster_path, closing_credits_lyrics
+        return (
+            segments,
+            background_music_path,
+            closing_credits_path,
+            movie_poster_path,
+            closing_credits_lyrics,
+        )
 
     except Exception as e:
-        Logger.print_error(
-            f"{thread_prefix}Error processing story: {str(e)}"
-        )
+        Logger.print_error(f"{thread_prefix}Error processing story: {str(e)}")
         return None, None, None, None, None
 
 
@@ -362,12 +385,17 @@ def retry_on_rate_limit(func, *args, retries=5, wait_time=60, **kwargs):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            if 'Rate limit exceeded' in str(e):
-                Logger.print_error(f"Rate limit exceeded. Retrying in {wait_time} seconds... (Attempt {attempt + 1} of {retries})")
+            if "Rate limit exceeded" in str(e):
+                Logger.print_error(
+                    f"Rate limit exceeded. Retrying in {wait_time} seconds... (Attempt {attempt + 1} of {retries})"
+                )
                 time.sleep(wait_time)
             else:
                 raise e
-    raise Exception(f"Failed to complete {func.__name__} after {retries} attempts due to rate limiting.")
+    raise Exception(
+        f"Failed to complete {func.__name__} after {retries} attempts due to rate limiting."
+    )
+
 
 def process_story_segment(
     sentence: str,
@@ -375,11 +403,11 @@ def process_story_segment(
     total_segments: int,
     tts_engine: GoogleTTS,
     style: str,
-    query_dispatcher: Optional[Any] = None,
+    query_dispatcher: Any | None = None,
     context: str = "",
-    thread_id: Optional[str] = None,
-    output_dir: Optional[str] = None
-) -> Optional[Dict[str, str]]:
+    thread_id: str | None = None,
+    output_dir: str | None = None,
+) -> dict[str, str] | None:
     """Process a single story segment.
 
     Args:
@@ -397,10 +425,7 @@ def process_story_segment(
         Optional[Dict[str, str]]: Dictionary with paths to generated files
     """
     thread_prefix = f"{thread_id} " if thread_id else ""
-    Logger.print_info(
-        f"{thread_prefix}Processing segment {segment_index + 1} "
-        f"of {total_segments}"
-    )
+    Logger.print_info(f"{thread_prefix}Processing segment {segment_index + 1} of {total_segments}")
 
     try:
         # Generate image for segment
@@ -412,46 +437,32 @@ def process_story_segment(
             total_images=total_segments,
             query_dispatcher=query_dispatcher,
             thread_id=thread_id,
-            output_dir=output_dir
+            output_dir=output_dir,
         )[0]  # get just the path from the tuple
         if not image_path:
             Logger.print_error(
-                f"{thread_prefix}Failed to generate image for segment "
-                f"{segment_index + 1}"
+                f"{thread_prefix}Failed to generate image for segment {segment_index + 1}"
             )
             return None
 
         # Generate audio for segment
-        success, audio_path = tts_engine.convert_text_to_speech(
-            text=sentence,
-            thread_id=thread_id
-        )
+        success, audio_path = tts_engine.convert_text_to_speech(text=sentence, thread_id=thread_id)
         if not success or not audio_path:
             Logger.print_error(
-                f"{thread_prefix}Failed to generate audio for segment "
-                f"{segment_index + 1}"
+                f"{thread_prefix}Failed to generate audio for segment {segment_index + 1}"
             )
             return None
 
-        return {
-            "image": image_path,
-            "audio": audio_path,
-            "text": sentence
-        }
+        return {"image": image_path, "audio": audio_path, "text": sentence}
 
     except Exception as e:
-        Logger.print_error(
-            f"{thread_prefix}Error processing segment "
-            f"{segment_index + 1}: {str(e)}"
-        )
+        Logger.print_error(f"{thread_prefix}Error processing segment {segment_index + 1}: {str(e)}")
         return None
 
+
 def create_video_with_captions(
-    segments: List[Dict[str, str]],
-    output_path: str,
-    output_dir: str,
-    thread_id: Optional[str] = None
-) -> Optional[str]:
+    segments: list[dict[str, str]], output_path: str, output_dir: str, thread_id: str | None = None
+) -> str | None:
     """Create a video with captions from segments.
 
     Args:
@@ -478,13 +489,11 @@ def create_video_with_captions(
                         image_path=segment["image"],
                         audio_path=segment["audio"],
                         output_path=initial_segment_path,
-                        thread_id=f"{thread_id}_{i}" if thread_id else None
+                        thread_id=f"{thread_id}_{i}" if thread_id else None,
                     )
                     futures.append((future, i, segment, initial_segment_path))
                 except Exception as e:
-                    Logger.print_error(
-                        f"{thread_prefix}Error submitting segment {i + 1}: {str(e)}"
-                    )
+                    Logger.print_error(f"{thread_prefix}Error submitting segment {i + 1}: {str(e)}")
                     continue
 
             # Process results as they complete
@@ -492,20 +501,16 @@ def create_video_with_captions(
                 try:
                     video_path = future.result()
                     if not video_path:
-                        raise ValueError(
-                            f"Failed to create initial video for segment {i + 1}"
-                        )
+                        raise ValueError(f"Failed to create initial video for segment {i + 1}")
 
                     # Generate word-level captions
                     captions = create_word_level_captions(
                         segment["audio"],
                         segment["text"],
-                        thread_id=f"{thread_id}_{i}" if thread_id else None
+                        thread_id=f"{thread_id}_{i}" if thread_id else None,
                     )
                     if not captions:
-                        raise ValueError(
-                            f"Failed to generate captions for segment {i + 1}"
-                        )
+                        raise ValueError(f"Failed to generate captions for segment {i + 1}")
 
                     # Add dynamic captions to the video segment
                     final_segment_path = os.path.join(output_dir, f"segment_{i}.mp4")
@@ -514,20 +519,16 @@ def create_video_with_captions(
                         captions=captions,
                         output_path=final_segment_path,
                         min_font_size=32,
-                        max_font_ratio=1.5  # Max will be 48 (1.5x the min)
+                        max_font_ratio=1.5,  # Max will be 48 (1.5x the min)
                     )
 
                     if not captioned_path:
-                        raise ValueError(
-                            f"Failed to add captions to segment {i + 1}"
-                        )
+                        raise ValueError(f"Failed to add captions to segment {i + 1}")
 
                     video_segments.append(captioned_path)
 
                 except (OSError, ValueError) as e:
-                    Logger.print_error(
-                        f"{thread_prefix}Error processing segment {i + 1}: {str(e)}"
-                    )
+                    Logger.print_error(f"{thread_prefix}Error processing segment {i + 1}: {str(e)}")
                     continue
 
         # Combine segments
@@ -543,31 +544,28 @@ def create_video_with_captions(
         # Concatenate segments using thread manager
         with ffmpeg_thread_manager:
             cmd = [
-                "ffmpeg", "-y",
-                "-f", "concat",
-                "-safe", "0",
-                "-i", list_file,
-                "-c", "copy",
-                output_path
+                "ffmpeg",
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                list_file,
+                "-c",
+                "copy",
+                output_path,
             ]
-            result = subprocess.run(
-                cmd,
-                check=True,
-                capture_output=True
-            )
+            result = subprocess.run(cmd, check=True, capture_output=True)
 
         if result.returncode != 0:
             raise ValueError(f"Failed to concatenate segments: {result.stderr.decode()}")
 
-        Logger.print_info(
-            f"{thread_prefix}Successfully created video at {output_path}"
-        )
+        Logger.print_info(f"{thread_prefix}Successfully created video at {output_path}")
         return output_path
 
     except (OSError, subprocess.CalledProcessError, ValueError) as e:
-        Logger.print_error(
-            f"{thread_prefix}Error creating video: {str(e)}"
-        )
+        Logger.print_error(f"{thread_prefix}Error creating video: {str(e)}")
         return None
     finally:
         # Cleanup temporary files
@@ -578,16 +576,12 @@ def create_video_with_captions(
                 if os.path.exists(segment):
                     os.remove(segment)
         except (OSError, UnboundLocalError) as e:
-            Logger.print_warning(
-                f"{thread_prefix}Error cleaning up temporary files: {str(e)}"
-            )
+            Logger.print_warning(f"{thread_prefix}Error cleaning up temporary files: {str(e)}")
+
 
 def add_background_music(
-    video_path: str,
-    output_path: str,
-    music_generator: MusicGenerator,
-    thread_id: Optional[str] = None
-) -> Optional[str]:
+    video_path: str, output_path: str, music_generator: MusicGenerator, thread_id: str | None = None
+) -> str | None:
     """Add background music to a video.
 
     Args:
@@ -606,10 +600,14 @@ def add_background_music(
         # Get video duration
         try:
             cmd = [
-                "ffprobe", "-v", "error",
-                "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                video_path
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                video_path,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             duration = float(result.stdout.strip())
@@ -622,7 +620,7 @@ def add_background_music(
         music_path = music_generator.generate_background_music(
             duration=duration,
             output_path=os.path.join(output_dir, "background.wav"),
-            thread_id=thread_id
+            thread_id=thread_id,
         )
         if not music_path:
             raise ValueError("Failed to generate background music")
@@ -630,27 +628,27 @@ def add_background_music(
         # Mix audio streams
         subprocess.run(
             [
-                "ffmpeg", "-y",
-                "-i", video_path,
-                "-i", music_path,
+                "ffmpeg",
+                "-y",
+                "-i",
+                video_path,
+                "-i",
+                music_path,
                 "-filter_complex",
                 "[1:a]volume=0.3[music];[0:a][music]amix=duration=longest",
-                "-c:v", "copy",
-                output_path
+                "-c:v",
+                "copy",
+                output_path,
             ],
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
-        Logger.print_info(
-            f"{thread_prefix}Successfully added background music to video"
-        )
+        Logger.print_info(f"{thread_prefix}Successfully added background music to video")
         return output_path
 
     except (OSError, subprocess.CalledProcessError, ValueError) as e:
-        Logger.print_error(
-            f"{thread_prefix}Error adding background music: {str(e)}"
-        )
+        Logger.print_error(f"{thread_prefix}Error adding background music: {str(e)}")
         return None
     finally:
         # Cleanup temporary files

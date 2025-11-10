@@ -1,24 +1,25 @@
 """Module for handling dynamic video captions and SRT subtitle generation."""
 
 import os
+import random
 import subprocess
 import tempfile
 import traceback
 import uuid
-import random
 from dataclasses import dataclass
-from typing import List, Tuple, Optional
 
-from moviepy.video.VideoClip import TextClip
+import numpy as np
+from ganglia_common.logger import Logger
 from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
 from moviepy.video.io.VideoFileClip import VideoFileClip
-from PIL import ImageFont, Image, ImageDraw
-import numpy as np
+from moviepy.video.VideoClip import TextClip
+from PIL import Image, ImageDraw, ImageFont
 
-from ganglia_common.logger import Logger
 from ganglia_studio.utils.ffmpeg_utils import run_ffmpeg_command
+
 from .caption_roi import find_roi_in_frame
 from .color_utils import get_vibrant_palette
+
 
 def get_default_font() -> str:
     """Get default font name."""
@@ -40,9 +41,11 @@ def get_default_font() -> str:
         "   - Linux: sudo apt-get install fonts-dejavu-core\n"
     )
 
+
 @dataclass
 class Word:
     """Represents a single word in a caption with timing and display properties."""
+
     text: str
     start_time: float
     end_time: float
@@ -53,12 +56,14 @@ class Word:
     font_name: str = get_default_font()
 
     @classmethod
-    def from_timed_word(cls, text: str, start_time: float, end_time: float, font_name: str = get_default_font()) -> 'Word':
+    def from_timed_word(
+        cls, text: str, start_time: float, end_time: float, font_name: str = get_default_font()
+    ) -> "Word":
         """Create a Word instance from pre-timed word (e.g. from Whisper alignment)."""
         return cls(text=text, start_time=start_time, end_time=end_time, font_name=font_name)
 
     @classmethod
-    def from_text(cls, text: str, font_name: str = get_default_font()) -> 'Word':
+    def from_text(cls, text: str, font_name: str = get_default_font()) -> "Word":
         """Create a Word instance from text only, timing to be calculated later."""
         return cls(text=text, start_time=0.0, end_time=0.0, font_name=font_name)
 
@@ -71,23 +76,36 @@ class Word:
             font = ImageFont.load_default()
         self.width = font.getlength(self.text)
 
+
 @dataclass
 class CaptionWindow:
     """Groups words into a display window with shared timing and font size."""
-    words: List[Word]
+
+    words: list[Word]
     start_time: float
     end_time: float
     font_size: int
 
+
 class CaptionEntry:
     """Represents a complete caption with text and timing information."""
-    def __init__(self, text: str, start_time: float, end_time: float, timed_words: Optional[List[Tuple[str, float, float]]] = None):
+
+    def __init__(
+        self,
+        text: str,
+        start_time: float,
+        end_time: float,
+        timed_words: list[tuple[str, float, float]] | None = None,
+    ):
         self.text = text
         self.start_time = start_time
         self.end_time = end_time
         self.timed_words = timed_words
 
-def split_into_words(caption: CaptionEntry, words_per_second: float = 2.0, font_name: str = get_default_font()) -> List[Word]:
+
+def split_into_words(
+    caption: CaptionEntry, words_per_second: float = 2.0, font_name: str = get_default_font()
+) -> list[Word]:
     """Split caption text into words with timing.
 
     If caption.timed_words is provided, uses those timings.
@@ -95,8 +113,10 @@ def split_into_words(caption: CaptionEntry, words_per_second: float = 2.0, font_
     """
     if caption.timed_words:
         # Use pre-calculated word timings (e.g. from Whisper)
-        return [Word.from_timed_word(text, start, end, font_name)
-                for text, start, end in caption.timed_words]
+        return [
+            Word.from_timed_word(text, start, end, font_name)
+            for text, start, end in caption.timed_words
+        ]
 
     # Fall back to calculating timing based on words_per_second
     words = caption.text.split()
@@ -119,11 +139,14 @@ def split_into_words(caption: CaptionEntry, words_per_second: float = 2.0, font_
             end_time = caption.end_time
         else:
             end_time = min(current_time + word_duration, caption.end_time)
-        result.append(Word(text=word, start_time=current_time, end_time=end_time, font_name=font_name))
+        result.append(
+            Word(text=word, start_time=current_time, end_time=end_time, font_name=font_name)
+        )
         current_time = end_time
     return result
 
-def assign_word_sizes(words: List[Word], min_font_size: int, max_font_ratio: float) -> None:
+
+def assign_word_sizes(words: list[Word], min_font_size: int, max_font_ratio: float) -> None:
     """
     Assign font sizes to words using a uniform distribution.
 
@@ -157,6 +180,7 @@ def assign_word_sizes(words: List[Word], min_font_size: int, max_font_ratio: flo
             word.font_size = random.choice(available_sizes)
         word.calculate_width(word.font_size)
 
+
 def calculate_word_position(
     word: Word,
     cursor_x: int,
@@ -164,8 +188,8 @@ def calculate_word_position(
     line_height: int,
     roi_width: int,
     roi_height: int,
-    previous_word: Optional[Word] = None
-) -> Tuple[int, int, int, int, bool]:
+    previous_word: Word | None = None,
+) -> tuple[int, int, int, int, bool]:
     """Calculate position for a word in the caption window."""
     # Calculate buffer pixels based on font size
     buffer_pixels = max(int(word.font_size * 0.4), 8)  # Reduced from 0.5 to 0.4
@@ -204,13 +228,14 @@ def calculate_word_position(
     # No room for new line - need new window
     return 0, 0, 0, 0, True
 
+
 def create_caption_windows(
-    words: List[Word],
+    words: list[Word],
     min_font_size: int,
     max_font_ratio: float,
     roi_width: int,
     roi_height: int,
-) -> List[CaptionWindow]:
+) -> list[CaptionWindow]:
     """Group words into caption windows with appropriate line breaks."""
     # First, assign random sizes to all words
     assign_word_sizes(words, min_font_size, max_font_ratio)
@@ -233,7 +258,7 @@ def create_caption_windows(
             line_height=int(word.font_size * 1.2),
             roi_width=int(roi_width),
             roi_height=int(roi_height),
-            previous_word=previous_word
+            previous_word=previous_word,
         )
 
         if needs_new_window:
@@ -243,7 +268,7 @@ def create_caption_windows(
                     words=current_window_words,
                     start_time=current_window_words[0].start_time,
                     end_time=current_window_words[-1].end_time,
-                    font_size=min_font_size  # This is now just a baseline for spacing
+                    font_size=min_font_size,  # This is now just a baseline for spacing
                 )
                 windows.append(window)
 
@@ -257,7 +282,9 @@ def create_caption_windows(
         # Update word position and line number
         word.x_position = word_x
         # Calculate line number based on y position, accounting for line height and vertical buffer
-        vertical_buffer = max(int(word.font_size * 1.2 * 0.4), 8)  # Same as in calculate_word_position
+        vertical_buffer = max(
+            int(word.font_size * 1.2 * 0.4), 8
+        )  # Same as in calculate_word_position
         line_spacing = word.font_size * 1.2 + vertical_buffer
         word.line_number = int(word_y / line_spacing)
         current_window_words.append(word)
@@ -273,17 +300,18 @@ def create_caption_windows(
             words=current_window_words,
             start_time=current_window_words[0].start_time,
             end_time=current_window_words[-1].end_time,
-            font_size=min_font_size  # This is now just a baseline for spacing
+            font_size=min_font_size,  # This is now just a baseline for spacing
         )
         windows.append(window)
 
     return windows
 
+
 def calculate_word_positions(
     window: CaptionWindow,
     video_height: int,
     margin: int,
-) -> List[Tuple[float, float]]:
+) -> list[tuple[float, float]]:
     """
     Calculate the (x, y) positions for each word in a caption window.
     Returns a list of (x, y) coordinates in the same order as window.words.
@@ -312,10 +340,11 @@ def calculate_word_positions(
 
     return positions
 
+
 def calculate_text_size(text, font_size, font_path=None):
     """Calculate the size of text when rendered with the given font size."""
     # Create a PIL Image to measure text size
-    img = Image.new('RGB', (1, 1))
+    img = Image.new("RGB", (1, 1))
     draw = ImageDraw.Draw(img)
 
     # Load font
@@ -338,62 +367,72 @@ def calculate_text_size(text, font_size, font_path=None):
     buffer_pixels = max(int(font_size * 0.75), 16)  # Significantly increased buffer
     return width + buffer_pixels * 2, height + buffer_pixels * 2, text_width, text_height
 
+
 def _create_text_clip(
     word: Word,
-    position: Tuple[int, int],
-    text_color: Tuple[int, int, int],
-    stroke_color: Tuple[int, int, int],
-    clip_dimensions: Tuple[int, int],
-    margins: Tuple[int, int, int, int],
-    border_thickness: int,
-    duration: float,
-    start_time: float
-) -> TextClip:
-    """Create a text clip with the given parameters."""
-    return TextClip(
-        text=word.text,
-        font=word.font_name,
-        method='caption',
-        color=text_color,
-        stroke_color=stroke_color,
-        stroke_width=border_thickness,
-        font_size=word.font_size,
-        size=clip_dimensions,
-        margin=margins,
-        text_align='left',
-        duration=duration
-    ).with_position(position).with_start(start_time)
-
-def _create_shadow_clip(
-    word: Word,
-    position: Tuple[int, int],
-    clip_dimensions: Tuple[int, int],
-    margins: Tuple[int, int, int, int],
+    position: tuple[int, int],
+    text_color: tuple[int, int, int],
+    stroke_color: tuple[int, int, int],
+    clip_dimensions: tuple[int, int],
+    margins: tuple[int, int, int, int],
     border_thickness: int,
     duration: float,
     start_time: float,
-    opacity: float
+) -> TextClip:
+    """Create a text clip with the given parameters."""
+    return (
+        TextClip(
+            text=word.text,
+            font=word.font_name,
+            method="caption",
+            color=text_color,
+            stroke_color=stroke_color,
+            stroke_width=border_thickness,
+            font_size=word.font_size,
+            size=clip_dimensions,
+            margin=margins,
+            text_align="left",
+            duration=duration,
+        )
+        .with_position(position)
+        .with_start(start_time)
+    )
+
+
+def _create_shadow_clip(
+    word: Word,
+    position: tuple[int, int],
+    clip_dimensions: tuple[int, int],
+    margins: tuple[int, int, int, int],
+    border_thickness: int,
+    duration: float,
+    start_time: float,
+    opacity: float,
 ) -> TextClip:
     """Create a shadow clip with the given parameters."""
-    return TextClip(
-        text=word.text,
-        font=word.font_name,
-        method='caption',
-        color=(0, 0, 0),  # Black shadow
-        stroke_color=(0, 0, 0),
-        stroke_width=border_thickness,
-        font_size=word.font_size,
-        size=clip_dimensions,
-        margin=margins,
-        text_align='left',
-        duration=duration
-    ).with_position(position).with_start(start_time).with_opacity(opacity)
+    return (
+        TextClip(
+            text=word.text,
+            font=word.font_name,
+            method="caption",
+            color=(0, 0, 0),  # Black shadow
+            stroke_color=(0, 0, 0),
+            stroke_width=border_thickness,
+            font_size=word.font_size,
+            size=clip_dimensions,
+            margin=margins,
+            text_align="left",
+            duration=duration,
+        )
+        .with_position(position)
+        .with_start(start_time)
+        .with_opacity(opacity)
+    )
+
 
 def _calculate_clip_dimensions(
-    word: Word,
-    border_thickness: int,
-    shadow_offset: Tuple[int, int]
-) -> Tuple[Tuple[int, int], Tuple[int, int, int, int]]:
+    word: Word, border_thickness: int, shadow_offset: tuple[int, int]
+) -> tuple[tuple[int, int], tuple[int, int, int, int]]:
     """Calculate clip dimensions and margins."""
     # Calculate padding to account for stroke and shadow
     # Use border thickness for stroke and shadow offset for shadow
@@ -407,6 +446,7 @@ def _calculate_clip_dimensions(
 
     return (clip_width, clip_height), (margin_left, 0, 0, margin_bottom)
 
+
 def _create_word_clips(
     word: Word,
     window: CaptionWindow,
@@ -414,14 +454,14 @@ def _create_word_clips(
     roi_y: int,
     roi_width: int,
     roi_height: int,
-    text_color: Tuple[int, int, int],
-    stroke_color: Tuple[int, int, int],
+    text_color: tuple[int, int, int],
+    stroke_color: tuple[int, int, int],
     border_thickness: int,
-    shadow_offset: Tuple[int, int],
+    shadow_offset: tuple[int, int],
     max_font_size: int,
-    cursor_pos: Tuple[int, int],
-    previous_word: Optional[Word]
-) -> Tuple[List[TextClip], Tuple[int, int]]:
+    cursor_pos: tuple[int, int],
+    previous_word: Word | None,
+) -> tuple[list[TextClip], tuple[int, int]]:
     """Create all clips (text and shadows) for a single word."""
     clip_dimensions, margins = _calculate_clip_dimensions(word, border_thickness, shadow_offset)
 
@@ -436,7 +476,7 @@ def _create_word_clips(
         line_height=int(word.font_size * 1.2),
         roi_width=int(roi_width),
         roi_height=int(roi_height),
-        previous_word=previous_word
+        previous_word=previous_word,
     )
 
     # Calculate base position adjustments
@@ -453,7 +493,7 @@ def _create_word_clips(
         border_thickness=border_thickness,
         duration=window.end_time - word.start_time,
         start_time=word.start_time,
-        opacity=0.4
+        opacity=0.4,
     )
 
     # Create inner shadow
@@ -465,7 +505,7 @@ def _create_word_clips(
         border_thickness=border_thickness,
         duration=window.end_time - word.start_time,
         start_time=word.start_time,
-        opacity=0.7
+        opacity=0.7,
     )
 
     # Create main text clip
@@ -478,10 +518,11 @@ def _create_word_clips(
         margins=margins,
         border_thickness=border_thickness,
         duration=window.end_time - word.start_time,
-        start_time=word.start_time
+        start_time=word.start_time,
     )
 
     return [outer_shadow, inner_shadow, text_clip], (new_cursor_x, new_cursor_y)
+
 
 def _process_caption_window(
     window: CaptionWindow,
@@ -493,11 +534,11 @@ def _process_caption_window(
     min_font_size: int,
     max_font_ratio: float,
     border_thickness: int,
-    shadow_offset: Tuple[int, int]
-) -> List[TextClip]:
+    shadow_offset: tuple[int, int],
+) -> list[TextClip]:
     """Process a single caption window and create all necessary clips."""
     # Get background color from ROI for this window's position
-    window_roi = first_frame[roi_y:roi_y+roi_height, roi_x:roi_x+roi_width]
+    window_roi = first_frame[roi_y : roi_y + roi_height, roi_x : roi_x + roi_width]
     avg_bg_color = tuple(map(int, np.mean(window_roi, axis=(0, 1))))
 
     # Calculate complement of background color
@@ -505,14 +546,18 @@ def _process_caption_window(
 
     # Find palette color closest to background complement
     palette = get_vibrant_palette()
-    color_diffs = [sum(abs(c1 - c2) for c1, c2 in zip(complement, palette_color)) for palette_color in palette]
+    color_diffs = [
+        sum(abs(c1 - c2) for c1, c2 in zip(complement, palette_color)) for palette_color in palette
+    ]
     color_idx = color_diffs.index(min(color_diffs))
     text_color = palette[color_idx]
 
     # Make stroke color exactly 1/3 intensity of text color
     stroke_color = tuple(c // 3 for c in text_color)
 
-    Logger.print_info(f"Using color {text_color} for window (background: {avg_bg_color}, complement: {complement})")
+    Logger.print_info(
+        f"Using color {text_color} for window (background: {avg_bg_color}, complement: {complement})"
+    )
 
     # Process all words in the window
     text_clips = []
@@ -534,24 +579,25 @@ def _process_caption_window(
             shadow_offset=shadow_offset,
             max_font_size=max_font_size,
             cursor_pos=(cursor_x, cursor_y),
-            previous_word=previous_word
+            previous_word=previous_word,
         )
         text_clips.extend(clips)
         previous_word = word
 
     return text_clips
 
+
 def create_dynamic_captions(
     input_video: str,
-    captions: List[CaptionEntry],
+    captions: list[CaptionEntry],
     output_path: str,
     min_font_size: int = 32,
     max_font_ratio: float = 1.5,
     font_name: str = get_default_font(),
     words_per_second: float = 2.0,
-    shadow_offset: Tuple[int, int] = (8, 8),
+    shadow_offset: tuple[int, int] = (8, 8),
     border_thickness: int = 5,
-) -> Optional[str]:
+) -> str | None:
     """Add Instagram-style dynamic captions to a video using MoviePy."""
     temp_files = []  # Keep track of temp files for cleanup
     try:
@@ -594,7 +640,7 @@ def create_dynamic_captions(
             min_font_size=min_font_size,
             max_font_ratio=max_font_ratio,
             roi_width=roi_width,
-            roi_height=roi_height
+            roi_height=roi_height,
         )
 
         # Process each window and collect all text clips
@@ -610,7 +656,7 @@ def create_dynamic_captions(
                 min_font_size=min_font_size,
                 max_font_ratio=max_font_ratio,
                 border_thickness=border_thickness,
-                shadow_offset=shadow_offset
+                shadow_offset=shadow_offset,
             )
             text_clips.extend(window_clips)
 
@@ -623,11 +669,14 @@ def create_dynamic_captions(
 
         # Extract audio from input video
         ffmpeg_cmd = [
-            "ffmpeg", "-y",
-            "-i", input_video,
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_video,
             "-vn",  # No video
-            "-acodec", "copy",  # Copy audio codec
-            temp_audio
+            "-acodec",
+            "copy",  # Copy audio codec
+            temp_audio,
         ]
         result = run_ffmpeg_command(ffmpeg_cmd)
         if not result:
@@ -640,23 +689,31 @@ def create_dynamic_captions(
 
         final_video.write_videofile(
             temp_video,
-            codec='libx264',
+            codec="libx264",
             audio=False,  # No audio in this step
-            preset='ultrafast',
-            threads=4
+            preset="ultrafast",
+            threads=4,
         )
 
         # Combine video with original audio
         ffmpeg_cmd = [
-            "ffmpeg", "-y",
-            "-i", temp_video,     # Video with captions
-            "-i", temp_audio,     # Original audio
-            "-map", "0:v:0",      # Map video from first input
-            "-map", "1:a:0",      # Map audio from second input
-            "-c:v", "copy",       # Copy video stream without re-encoding
-            "-c:a", "aac",        # Encode audio as AAC
-            "-b:a", "192k",       # Set audio bitrate
-            output_path
+            "ffmpeg",
+            "-y",
+            "-i",
+            temp_video,  # Video with captions
+            "-i",
+            temp_audio,  # Original audio
+            "-map",
+            "0:v:0",  # Map video from first input
+            "-map",
+            "1:a:0",  # Map audio from second input
+            "-c:v",
+            "copy",  # Copy video stream without re-encoding
+            "-c:a",
+            "aac",  # Encode audio as AAC
+            "-b:a",
+            "192k",  # Set audio bitrate
+            output_path,
         ]
         result = run_ffmpeg_command(ffmpeg_cmd)
         if not result:
@@ -685,41 +742,42 @@ def create_dynamic_captions(
             except Exception as exception:
                 Logger.print_error(f"Error cleaning up temporary file {temp_file}: {exception}")
 
-def create_srt_captions(
-    captions: List[CaptionEntry],
-    output_path: Optional[str] = None
-) -> Optional[str]:
+
+def create_srt_captions(captions: list[CaptionEntry], output_path: str | None = None) -> str | None:
     """Create an SRT subtitle file from caption entries."""
     try:
         if output_path is None:
-            with tempfile.NamedTemporaryFile(suffix='.srt', mode='w', delete=False) as srt_file:
+            with tempfile.NamedTemporaryFile(suffix=".srt", mode="w", delete=False) as srt_file:
                 output_path = srt_file.name
+
         def format_time(seconds: float) -> str:
             """Convert seconds to SRT time format (HH:MM:SS,mmm)"""
             hours = int(seconds // 3600)
             minutes = int((seconds % 3600) // 60)
             seconds = seconds % 60
-            return f"{hours:02d}:{minutes:02d}:{seconds:06.3f}".replace('.', ',')
-        with open(output_path, 'w', encoding='utf-8') as f:
+            return f"{hours:02d}:{minutes:02d}:{seconds:06.3f}".replace(".", ",")
+
+        with open(output_path, "w", encoding="utf-8") as f:
             for i, caption in enumerate(captions, 1):
                 f.write(f"{i}\n")
                 f.write(f"{format_time(caption.start_time)} --> {format_time(caption.end_time)}\n")
                 f.write(f"{caption.text}\n\n")
         return output_path
-    except (OSError, IOError) as exception:
+    except OSError as exception:
         Logger.print_error(f"Error creating SRT file: {exception}")
         return None
 
+
 def create_static_captions(
     input_video: str,
-    captions: List[CaptionEntry],
+    captions: list[CaptionEntry],
     output_path: str,
     font_size: int = 40,
     font_name: str = get_default_font(),
     box_color: str = "black@0.5",  # Semi-transparent background
     position: str = "bottom",
-    margin: int = 40
-) -> Optional[str]:
+    margin: int = 40,
+) -> str | None:
     """
     Add simple static captions to a video.
 
@@ -737,16 +795,20 @@ def create_static_captions(
     try:
         # Get video dimensions
         ffprobe_cmd = [
-            "ffprobe", "-v", "error",
-            "-select_streams", "v:0",
-            "-show_entries", "stream=width,height",
-            "-of", "csv=p=0",
-            input_video
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "csv=p=0",
+            input_video,
         ]
         dimensions = run_ffmpeg_command(ffprobe_cmd)
         if not dimensions:
             raise ValueError("Could not determine video dimensions")
-
 
         # Build drawtext filters for each caption
         drawtext_filters = []
@@ -782,11 +844,14 @@ def create_static_captions(
 
         # Extract audio from input video
         ffmpeg_cmd = [
-            "ffmpeg", "-y",
-            "-i", input_video,
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_video,
             "-vn",  # No video
-            "-acodec", "copy",  # Copy audio codec
-            temp_audio
+            "-acodec",
+            "copy",  # Copy audio codec
+            temp_audio,
         ]
         result = run_ffmpeg_command(ffmpeg_cmd)
         if not result:
@@ -798,11 +863,14 @@ def create_static_captions(
         temp_files.append(temp_video)
 
         ffmpeg_cmd = [
-            "ffmpeg", "-y",
-            "-i", input_video,
-            "-vf", complete_filter,
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_video,
+            "-vf",
+            complete_filter,
             "-an",  # No audio in this step
-            temp_video
+            temp_video,
         ]
         result = run_ffmpeg_command(ffmpeg_cmd)
         if not result:
@@ -811,15 +879,23 @@ def create_static_captions(
 
         # Combine video with original audio
         ffmpeg_cmd = [
-            "ffmpeg", "-y",
-            "-i", temp_video,     # Video with captions
-            "-i", temp_audio,     # Original audio
-            "-map", "0:v:0",      # Map video from first input
-            "-map", "1:a:0",      # Map audio from second input
-            "-c:v", "copy",       # Copy video stream without re-encoding
-            "-c:a", "aac",        # Encode audio as AAC
-            "-b:a", "192k",       # Set audio bitrate
-            output_path
+            "ffmpeg",
+            "-y",
+            "-i",
+            temp_video,  # Video with captions
+            "-i",
+            temp_audio,  # Original audio
+            "-map",
+            "0:v:0",  # Map video from first input
+            "-map",
+            "1:a:0",  # Map audio from second input
+            "-c:v",
+            "copy",  # Copy video stream without re-encoding
+            "-c:a",
+            "aac",  # Encode audio as AAC
+            "-b:a",
+            "192k",  # Set audio bitrate
+            output_path,
         ]
         result = run_ffmpeg_command(ffmpeg_cmd)
         if not result:

@@ -1,14 +1,15 @@
 import json
 import os
-from openai import OpenAI
 import time
+from typing import Any
+
 import requests
 from ganglia_common.logger import Logger
-from typing import Optional, Any, Dict
-from datetime import datetime
+from openai import OpenAI
 
 # Lazy initialization of OpenAI client to avoid requiring API key at import time
 _client = None
+
 
 def get_openai_client():
     """Get or create the OpenAI client instance."""
@@ -22,6 +23,7 @@ def get_openai_client():
             )
         _client = OpenAI(api_key=api_key)
     return _client
+
 
 def generate_filtered_story(context, style, story_title, query_dispatcher):
     """
@@ -48,9 +50,9 @@ def generate_filtered_story(context, style, story_title, query_dispatcher):
         "3. Rewrite sections with PII to only include publicly available information\n\n"
         "IMPORTANT: Return ONLY a JSON object in this exact format with no other text before or after:\n"
         "{\n"
-        "  \"style\": \"<insert style here>\",\n"
-        "  \"title\": \"<insert title here>\",\n"
-        "  \"story\": \"<insert filtered story here>\"\n"
+        '  "style": "<insert style here>",\n'
+        '  "title": "<insert title here>",\n'
+        '  "story": "<insert filtered story here>"\n'
         "}"
     )
 
@@ -59,11 +61,7 @@ def generate_filtered_story(context, style, story_title, query_dispatcher):
         success, filtered_content = query_dispatcher.filter_content_for_dalle(context)
         if not success:
             Logger.print_error("Failed to filter story content")
-            return json.dumps({
-                "style": style,
-                "title": story_title,
-                "story": "No story generated"
-            })
+            return json.dumps({"style": style, "title": story_title, "story": "No story generated"})
 
         # Then format it into the required JSON structure
         response = query_dispatcher.send_query(
@@ -71,9 +69,9 @@ def generate_filtered_story(context, style, story_title, query_dispatcher):
             f"{filtered_content}\n\n"
             "IMPORTANT: Return ONLY a JSON object in this exact format with no other text before or after:\n"
             "{\n"
-            "  \"style\": \"<insert style here>\",\n"
-            "  \"title\": \"<insert title here>\",\n"
-            "  \"story\": \"<insert filtered story here>\"\n"
+            '  "style": "<insert style here>",\n'
+            '  "title": "<insert title here>",\n'
+            '  "story": "<insert filtered story here>"\n'
             "}"
         )
 
@@ -85,21 +83,19 @@ def generate_filtered_story(context, style, story_title, query_dispatcher):
         filtered_story = response_json["story"]
 
         if filtered_story == "No story generated":
-            Logger.print_error("Failed to generate filtered story - error in response format. Response: " + response)
+            Logger.print_error(
+                "Failed to generate filtered story - error in response format. Response: "
+                + response
+            )
 
         Logger.print_info(f"Generated filtered story: {filtered_story}")
-        return json.dumps({
-            "style": filtered_style,
-            "title": filtered_title,
-            "story": filtered_story
-        })
+        return json.dumps(
+            {"style": filtered_style, "title": filtered_title, "story": filtered_story}
+        )
     except Exception as e:
         Logger.print_error(f"Error generating filtered story: {e}")
-        return json.dumps({
-            "style": style,
-            "title": story_title,
-            "story": "No story generated"
-        })
+        return json.dumps({"style": style, "title": story_title, "story": "No story generated"})
+
 
 def generate_movie_poster(
     filtered_story_json: str,
@@ -109,8 +105,8 @@ def generate_movie_poster(
     retries: int = 5,
     wait_time: float = 60,
     thread_id: str = "[MoviePoster]",
-    output_dir: str = None
-) -> Optional[str]:
+    output_dir: str = None,
+) -> str | None:
     thread_prefix = f"{thread_id} " if thread_id else ""
     try:
         filtered_story = json.loads(filtered_story_json)
@@ -131,11 +127,7 @@ def generate_movie_poster(
             try:
                 client = get_openai_client()
                 response = client.images.generate(
-                    model="dall-e-3",
-                    prompt=prompt,
-                    size="1024x1024",
-                    quality="standard",
-                    n=1
+                    model="dall-e-3", prompt=prompt, size="1024x1024", quality="standard", n=1
                 )
                 if response.data:
                     image_url = response.data[0].url
@@ -144,16 +136,24 @@ def generate_movie_poster(
                     save_image_without_caption(image_url, filename, thread_id=thread_id)
                     return filename
                 else:
-                    Logger.print_error(f"{thread_prefix}No image was returned for the movie poster.")
+                    Logger.print_error(
+                        f"{thread_prefix}No image was returned for the movie poster."
+                    )
                     return None
             except Exception as e:
-                if 'Rate limit exceeded' in str(e):
-                    Logger.print_warning(f"{thread_prefix}Rate limit exceeded. Retrying in {wait_time} seconds... (Attempt {attempt + 1} of {retries})")
+                if "Rate limit exceeded" in str(e):
+                    Logger.print_warning(
+                        f"{thread_prefix}Rate limit exceeded. Retrying in {wait_time} seconds... (Attempt {attempt + 1} of {retries})"
+                    )
                     time.sleep(wait_time)
-                elif 'safety system' in str(e).lower():
+                elif "safety system" in str(e).lower():
                     # If we hit a safety rejection, try to filter the content further
-                    Logger.print_warning(f"{thread_prefix}Safety system rejection. Attempting to filter content (Attempt {safety_attempt + 1} of {safety_retries})")
-                    success, filtered_context = query_dispatcher.filter_content_for_dalle(filtered_context)
+                    Logger.print_warning(
+                        f"{thread_prefix}Safety system rejection. Attempting to filter content (Attempt {safety_attempt + 1} of {safety_retries})"
+                    )
+                    success, filtered_context = query_dispatcher.filter_content_for_dalle(
+                        filtered_context
+                    )
                     if success:
                         prompt = f"Create a movie poster for the story titled '{story_title}' with the style of {style} and context: {filtered_context}."
                         break  # Break the inner loop to try again with filtered content
@@ -161,7 +161,9 @@ def generate_movie_poster(
                         Logger.print_error(f"{thread_prefix}Failed to filter content")
                         return None
                 else:
-                    Logger.print_error(f"{thread_prefix}An error occurred while generating the movie poster: {e}")
+                    Logger.print_error(
+                        f"{thread_prefix}An error occurred while generating the movie poster: {e}"
+                    )
                     return None
         else:
             # Inner loop completed without safety issues but hit rate limit
@@ -169,18 +171,21 @@ def generate_movie_poster(
         # If we get here, we had a safety issue and filtered the content, so try again
         continue
 
-    Logger.print_error(f"{thread_prefix}Failed to generate movie poster after {safety_retries} safety filtering attempts.")
+    Logger.print_error(
+        f"{thread_prefix}Failed to generate movie poster after {safety_retries} safety filtering attempts."
+    )
     return None
+
 
 def filter_text(
     text: str,
-    context: Optional[str] = None,
-    style: Optional[str] = None,
-    query_dispatcher: Optional[Any] = None,
+    context: str | None = None,
+    style: str | None = None,
+    query_dispatcher: Any | None = None,
     retries: int = 5,
     wait_time: float = 60.0,
-    thread_id: Optional[str] = None
-) -> Dict[str, str]:
+    thread_id: str | None = None,
+) -> dict[str, str]:
     """Filter and process text for better story generation.
 
     Args:
@@ -198,7 +203,9 @@ def filter_text(
     thread_prefix = f"{thread_id} " if thread_id else ""
 
     if not query_dispatcher:
-        Logger.print_warning(f"{thread_prefix}No query dispatcher provided, returning original text")
+        Logger.print_warning(
+            f"{thread_prefix}No query dispatcher provided, returning original text"
+        )
         return {"text": text}
 
     # Build the prompt for filtering
@@ -213,14 +220,12 @@ def filter_text(
         try:
             response = query_dispatcher.send_query(prompt)
             filtered_text = response.strip()
-            Logger.print_info(
-                f"{thread_prefix}Successfully filtered text: {filtered_text}"
-            )
+            Logger.print_info(f"{thread_prefix}Successfully filtered text: {filtered_text}")
             return {"text": filtered_text}
 
         except Exception as e:
             if attempt < retries - 1:
-                retry_wait = wait_time * (2 ** attempt)  # Exponential backoff
+                retry_wait = wait_time * (2**attempt)  # Exponential backoff
                 Logger.print_warning(
                     f"{thread_prefix}Error filtering text: {str(e)}. "
                     f"Retrying in {retry_wait} seconds... "
@@ -229,12 +234,12 @@ def filter_text(
                 time.sleep(retry_wait)
             else:
                 Logger.print_error(
-                    f"{thread_prefix}Failed to filter text after "
-                    f"{retries} attempts: {str(e)}"
+                    f"{thread_prefix}Failed to filter text after {retries} attempts: {str(e)}"
                 )
                 return {"text": text}  # Return original text on failure
 
     return {"text": text}
+
 
 def save_image_without_caption(image_url, filename, thread_id=None):
     """Save an image from URL without caption.
@@ -248,6 +253,6 @@ def save_image_without_caption(image_url, filename, thread_id=None):
     response = requests.get(image_url, timeout=30)  # 30 second timeout
     if response.status_code == 200:
         os.makedirs(os.path.dirname(filename), exist_ok=True)
-        with open(filename, 'wb') as file:
+        with open(filename, "wb") as file:
             file.write(response.content)
     Logger.print_info(f"{thread_prefix}Movie poster saved to {filename}")

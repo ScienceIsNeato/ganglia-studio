@@ -1,5 +1,6 @@
-from abc import ABC, abstractmethod
 import time
+from abc import ABC, abstractmethod
+
 
 class MusicBackend(ABC):
     """Base class for music generation backends."""
@@ -8,7 +9,14 @@ class MusicBackend(ABC):
     DEFAULT_CREDITS_DURATION = 60
 
     @abstractmethod
-    def generate_instrumental(self, prompt: str, title: str = None, tags: str = None, wait_audio: bool = False, duration: int = 30) -> str:
+    def generate_instrumental(
+        self,
+        prompt: str,
+        title: str = None,
+        tags: str = None,
+        wait_audio: bool = False,
+        duration: int = 30,
+    ) -> str:
         """Generate instrumental music from a text prompt.
 
         Args:
@@ -25,15 +33,15 @@ class MusicBackend(ABC):
 
     @abstractmethod
     def generate_with_lyrics(
-            self,
-            prompt: str,
-            story_text: str,
-            title: str = None,
-            tags: str = None,
-            query_dispatcher = None,
-            wait_audio: bool = False,
-            duration: int = None
-        ) -> tuple[str, str]:
+        self,
+        prompt: str,
+        story_text: str,
+        title: str = None,
+        tags: str = None,
+        query_dispatcher=None,
+        wait_audio: bool = False,
+        duration: int = None,
+    ) -> tuple[str, str]:
         """Generate music with lyrics from a text prompt and story.
 
         Args:
@@ -52,17 +60,17 @@ class MusicBackend(ABC):
 
     @abstractmethod
     def start_generation(
-            self,
-            prompt: str,
-            with_lyrics: bool = False,
-            title: str = None,
-            tags: str = None,
-            story_text: str = None,
-            wait_audio: bool = False,
-            query_dispatcher = None,
-            model: str = 'chirp-v3-5',
-            duration: int = None
-        ) -> str:
+        self,
+        prompt: str,
+        with_lyrics: bool = False,
+        title: str = None,
+        tags: str = None,
+        story_text: str = None,
+        wait_audio: bool = False,
+        query_dispatcher=None,
+        model: str = "chirp-v3-5",
+        duration: int = None,
+    ) -> str:
         """Start the generation process and return a job ID or identifier.
 
         Args:
@@ -122,7 +130,7 @@ class MusicBackend(ABC):
             print(f"\nStatus: {status}")
             print(f"Progress: {progress:.1f}%")
 
-            if status == 'complete':
+            if status == "complete":
                 return self.get_result(job_id)
 
             time.sleep(interval)

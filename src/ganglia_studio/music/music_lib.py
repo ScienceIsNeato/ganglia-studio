@@ -5,18 +5,21 @@ with fallback support, retry mechanisms, and progress tracking.
 """
 
 import os
-import time
 import subprocess
+import time
+from typing import Any
+
 from ganglia_common.logger import Logger
+
+from ganglia_studio.music.backends.foxai_suno import FoxAISunoBackend
 from ganglia_studio.music.backends.meta import MetaMusicBackend
 from ganglia_studio.music.backends.suno_api_org import SunoApiOrgBackend
-from ganglia_studio.music.backends.foxai_suno import FoxAISunoBackend
 from ganglia_studio.video.config_loader import TTVConfig
-from typing import Optional, Any, Tuple, List, Union
+
 
 def _exponential_backoff(attempt, base_delay=1, max_delay=5):
     """Calculate delay with exponential backoff and jitter."""
-    delay = min(base_delay * (2 ** attempt), max_delay)
+    delay = min(base_delay * (2**attempt), max_delay)
 
     # If we're at max delay, return it without jitter
     if delay >= max_delay:
@@ -30,6 +33,7 @@ def _exponential_backoff(attempt, base_delay=1, max_delay=5):
     # Normal case: add bidirectional jitter
     jitter = delay * 0.1  # 10% jitter
     return delay + (jitter * (2 * (os.urandom(1)[0] / 255.0) - 1))
+
 
 class MusicGenerator:
     """Music generation service that uses different backends."""
@@ -59,12 +63,19 @@ class MusicGenerator:
                 self.backend = SunoApiOrgBackend()
                 self.fallback_backend = FoxAISunoBackend()
 
-            Logger.print_info(f"MusicGenerator initialized with backend: {self.backend.__class__.__name__},"
-                              f" and fallback: {self.fallback_backend.__class__.__name__}")
+            Logger.print_info(
+                f"MusicGenerator initialized with backend: {self.backend.__class__.__name__},"
+                f" and fallback: {self.fallback_backend.__class__.__name__}"
+            )
 
-    def generate_instrumental(self, prompt: str, duration: Optional[int] = None,
-                            title: Optional[str] = None, tags: Optional[List[str]] = None,
-                            output_path: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
+    def generate_instrumental(
+        self,
+        prompt: str,
+        duration: int | None = None,
+        title: str | None = None,
+        tags: list[str] | None = None,
+        output_path: str | None = None,
+    ) -> tuple[str | None, str | None]:
         """Generate instrumental music from a text prompt.
 
         Args:
@@ -78,26 +89,23 @@ class MusicGenerator:
 
         # Try primary backend first with retries
         result = self._try_generate_with_retries(
-            self.backend,
-            prompt,
-            duration=duration,
-            title=title,
-            tags=tags,
-            output_path=output_path
+            self.backend, prompt, duration=duration, title=title, tags=tags, output_path=output_path
         )
         if result and result[0]:  # Check both tuple and first element
             return result
 
         # If primary failed and we have a fallback, try that
         if self.fallback_backend:
-            Logger.print_info("Primary backend failed after retries, attempting fallback to Meta backend...")
+            Logger.print_info(
+                "Primary backend failed after retries, attempting fallback to Meta backend..."
+            )
             result = self._try_generate_with_backend(
                 self.fallback_backend,
                 prompt,
                 duration=duration,
                 title=title,
                 tags=tags,
-                output_path=output_path
+                output_path=output_path,
             )
             if result:
                 if isinstance(result, tuple):
@@ -106,15 +114,23 @@ class MusicGenerator:
 
         return None, None
 
-    def _try_generate_with_retries(self, backend, prompt: str, duration: Optional[int] = None,
-                                  title: Optional[str] = None, tags: Optional[List[str]] = None,
-                                  output_path: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
+    def _try_generate_with_retries(
+        self,
+        backend,
+        prompt: str,
+        duration: int | None = None,
+        title: str | None = None,
+        tags: list[str] | None = None,
+        output_path: str | None = None,
+    ) -> tuple[str | None, str | None]:
         """Attempt to generate music with retries and exponential backoff."""
         for attempt in range(self.MAX_RETRIES):
             try:
                 if attempt > 0:
                     delay = _exponential_backoff(attempt)
-                    Logger.print_info(f"Retry attempt {attempt + 1}/{self.MAX_RETRIES} after {delay:.1f}s delay...")
+                    Logger.print_info(
+                        f"Retry attempt {attempt + 1}/{self.MAX_RETRIES} after {delay:.1f}s delay..."
+                    )
                     time.sleep(delay)
 
                 result = self._try_generate_with_backend(
@@ -123,7 +139,7 @@ class MusicGenerator:
                     duration=duration,
                     title=title,
                     tags=tags,
-                    output_path=output_path
+                    output_path=output_path,
                 )
 
                 if result:
@@ -134,13 +150,15 @@ class MusicGenerator:
                     return result, None
 
                 if attempt < self.MAX_RETRIES - 1:
-                    Logger.print_warning(f"Attempt {attempt + 1}/{self.MAX_RETRIES} failed, will retry...")
+                    Logger.print_warning(
+                        f"Attempt {attempt + 1}/{self.MAX_RETRIES} failed, will retry..."
+                    )
                     continue
                 else:
                     Logger.print_error("All retry attempts exhausted")
                     return None, None
 
-            except (RuntimeError, IOError, ValueError, TimeoutError) as e:
+            except (OSError, RuntimeError, ValueError, TimeoutError) as e:
                 Logger.print_error(f"Error on attempt {attempt + 1}: {str(e)}")
                 if attempt == self.MAX_RETRIES - 1:
                     Logger.print_error("All retry attempts exhausted")
@@ -148,11 +166,18 @@ class MusicGenerator:
 
         return None, None
 
-    def _try_generate_with_backend(self, backend, prompt: str, with_lyrics: bool = False,
-                                 title: Optional[str] = None, tags: Optional[List[str]] = None,
-                                 duration: Optional[int] = None, story_text: Optional[str] = None,
-                                 query_dispatcher: Optional[Any] = None,
-                                 output_path: Optional[str] = None) -> Union[str, Tuple[str, str], None]:
+    def _try_generate_with_backend(
+        self,
+        backend,
+        prompt: str,
+        with_lyrics: bool = False,
+        title: str | None = None,
+        tags: list[str] | None = None,
+        duration: int | None = None,
+        story_text: str | None = None,
+        query_dispatcher: Any | None = None,
+        output_path: str | None = None,
+    ) -> str | tuple[str, str] | None:
         """Attempt to generate music with the specified backend.
 
         Args:
@@ -179,7 +204,7 @@ class MusicGenerator:
                 tags=tags,
                 duration=duration,
                 story_text=story_text,
-                query_dispatcher=query_dispatcher
+                query_dispatcher=query_dispatcher,
             )
             if not job_id:
                 Logger.print_error(f"Failed to start generation with {backend.__class__.__name__}")
@@ -205,29 +230,37 @@ class MusicGenerator:
             if output_path and isinstance(result, str):
                 try:
                     import shutil
+
                     shutil.copy2(result, output_path)
                     return output_path
-                except (IOError, OSError) as e:
+                except OSError as e:
                     Logger.print_error(f"Failed to copy file to output path: {e}")
                     return result
             elif output_path and isinstance(result, tuple) and result[0]:
                 try:
                     import shutil
+
                     shutil.copy2(result[0], output_path)
                     return output_path, result[1] if len(result) > 1 else None
-                except (IOError, OSError) as e:
+                except OSError as e:
                     Logger.print_error(f"Failed to copy file to output path: {e}")
                     return result
 
             return result
 
-        except (RuntimeError, IOError, ValueError, TimeoutError) as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             Logger.print_error(f"Error with {backend.__class__.__name__}: {str(e)}")
             return None
 
-    def generate_with_lyrics(self, prompt: str, story_text: str, title: Optional[str] = None,
-                           tags: Optional[List[str]] = None, output_path: Optional[str] = None,
-                           query_dispatcher: Optional[Any] = None) -> tuple[str, str]:
+    def generate_with_lyrics(
+        self,
+        prompt: str,
+        story_text: str,
+        title: str | None = None,
+        tags: list[str] | None = None,
+        output_path: str | None = None,
+        query_dispatcher: Any | None = None,
+    ) -> tuple[str, str]:
         """Generate music with lyrics from a text prompt and story.
 
         Args:
@@ -241,7 +274,9 @@ class MusicGenerator:
         Returns:
             tuple[str, str]: Tuple containing (audio_file_path, lyrics) or (None, None) if generation fails
         """
-        Logger.print_info(f"Generating music with lyrics. Prompt: {prompt}, Story length: {len(story_text)}")
+        Logger.print_info(
+            f"Generating music with lyrics. Prompt: {prompt}, Story length: {len(story_text)}"
+        )
 
         # Start generation
         job_id = self.backend.start_generation(
@@ -250,7 +285,7 @@ class MusicGenerator:
             title=title,
             tags=tags,
             story_text=story_text,
-            query_dispatcher=query_dispatcher
+            query_dispatcher=query_dispatcher,
         )
         if not job_id:
             Logger.print_error("Failed to start generation")
@@ -275,16 +310,19 @@ class MusicGenerator:
         if output_path and isinstance(result, tuple) and result[0]:
             try:
                 import shutil
+
                 shutil.copy2(result[0], output_path)
                 # If we successfully copied the file, return the output path and lyrics
-                return output_path, result[1] if isinstance(result, tuple) and len(result) > 1 else None
-            except (IOError, OSError) as e:
+                return output_path, result[1] if isinstance(result, tuple) and len(
+                    result
+                ) > 1 else None
+            except OSError as e:
                 Logger.print_error(f"Failed to copy file to output path: {e}")
                 return result if isinstance(result, tuple) else (result, None)
 
         return result
 
-    def validate_audio_file(self, file_path: str, thread_id: Optional[str] = None) -> bool:
+    def validate_audio_file(self, file_path: str, thread_id: str | None = None) -> bool:
         """Validate that a file exists and is a valid audio file.
 
         Args:
@@ -302,14 +340,19 @@ class MusicGenerator:
 
         try:
             cmd = [
-                "ffprobe", "-v", "error",
-                "-select_streams", "a:0",
-                "-show_entries", "stream=codec_type",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                file_path
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a:0",
+                "-show_entries",
+                "stream=codec_type",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                file_path,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True)
-            if result.returncode != 0 or 'audio' not in result.stdout:
+            if result.returncode != 0 or "audio" not in result.stdout:
                 Logger.print_error(f"{thread_prefix}File is not a valid audio file: {file_path}")
                 return False
             return True
@@ -318,7 +361,9 @@ class MusicGenerator:
             Logger.print_error(f"{thread_prefix}Failed to validate audio file: {str(e)}")
             return False
 
-    def get_background_music_from_file(self, file_path: str, thread_id: Optional[str] = None) -> Optional[str]:
+    def get_background_music_from_file(
+        self, file_path: str, thread_id: str | None = None
+    ) -> str | None:
         """Get background music from a file path.
 
         Args:
@@ -335,7 +380,13 @@ class MusicGenerator:
             return file_path
         return None
 
-    def get_background_music_from_prompt(self, prompt: str, output_dir: str, skip_generation: bool = False, thread_id: Optional[str] = None) -> Optional[str]:
+    def get_background_music_from_prompt(
+        self,
+        prompt: str,
+        output_dir: str,
+        skip_generation: bool = False,
+        thread_id: str | None = None,
+    ) -> str | None:
         """Generate background music from a prompt.
 
         Args:
@@ -350,7 +401,9 @@ class MusicGenerator:
         thread_prefix = f"{thread_id} " if thread_id else ""
 
         if skip_generation:
-            Logger.print_info(f"{thread_prefix}Skipping background music generation due to skip_generation flag")
+            Logger.print_info(
+                f"{thread_prefix}Skipping background music generation due to skip_generation flag"
+            )
             return None
 
         Logger.print_info(f"{thread_prefix}Generating background music with prompt: {prompt}")
@@ -363,20 +416,23 @@ class MusicGenerator:
         result = self.generate_instrumental(
             prompt=prompt,
             duration=30,  # TODO: Calculate actual duration
-            output_path=output_path
+            output_path=output_path,
         )
 
         if result:
             # Handle both string and tuple return types
             background_music_path = result[0] if isinstance(result, tuple) else result
-            Logger.print_info(f"{thread_prefix}Successfully generated background music at: {background_music_path}")
+            Logger.print_info(
+                f"{thread_prefix}Successfully generated background music at: {background_music_path}"
+            )
 
             # If we have an output path, try to copy the file
             try:
                 import shutil
+
                 shutil.copy2(background_music_path, output_path)
                 return output_path
-            except (IOError, OSError) as e:
+            except OSError as e:
                 Logger.print_error(f"{thread_prefix}Failed to copy file to output path: {e}")
                 return background_music_path
 
@@ -388,8 +444,8 @@ class MusicGenerator:
         config: Any,
         output_dir: str,
         skip_generation: bool = False,
-        thread_id: Optional[str] = None
-    ) -> Optional[str]:
+        thread_id: str | None = None,
+    ) -> str | None:
         """Get background music either from file or by generating from prompt.
 
         Args:
@@ -403,13 +459,13 @@ class MusicGenerator:
         """
         thread_prefix = f"{thread_id} " if thread_id else ""
 
-        if not hasattr(config, 'background_music') or not config.background_music:
+        if not hasattr(config, "background_music") or not config.background_music:
             Logger.print_info(f"{thread_prefix}No background music configuration found")
             return None
 
         # Get file and prompt settings
-        background_music_path = getattr(config.background_music, 'file', None)
-        background_music_prompt = getattr(config.background_music, 'prompt', None)
+        background_music_path = getattr(config.background_music, "file", None)
+        background_music_prompt = getattr(config.background_music, "prompt", None)
 
         # Validate settings
         if background_music_path is not None and background_music_prompt is not None:
@@ -420,7 +476,9 @@ class MusicGenerator:
             return None
 
         if background_music_path is None and background_music_prompt is None:
-            Logger.print_error(f"{thread_prefix}Background music path and prompt cannot both be None")
+            Logger.print_error(
+                f"{thread_prefix}Background music path and prompt cannot both be None"
+            )
             return None
 
         # Get background music from file or generate from prompt
@@ -428,13 +486,12 @@ class MusicGenerator:
             return self.get_background_music_from_file(background_music_path, thread_id)
         else:
             return self.get_background_music_from_prompt(
-                background_music_prompt,
-                output_dir,
-                skip_generation,
-                thread_id
+                background_music_prompt, output_dir, skip_generation, thread_id
             )
 
-    def get_closing_credits_from_file(self, file_path: str, thread_id: Optional[str] = None) -> Optional[str]:
+    def get_closing_credits_from_file(
+        self, file_path: str, thread_id: str | None = None
+    ) -> str | None:
         """Get closing credits music from a file path.
 
         Args:
@@ -457,9 +514,9 @@ class MusicGenerator:
         story_text: str,
         output_dir: str,
         skip_generation: bool = False,
-        query_dispatcher: Optional[Any] = None,
-        thread_id: Optional[str] = None
-    ) -> Tuple[Optional[str], Optional[str]]:
+        query_dispatcher: Any | None = None,
+        thread_id: str | None = None,
+    ) -> tuple[str | None, str | None]:
         """Generate closing credits music from a prompt.
 
         Args:
@@ -478,7 +535,9 @@ class MusicGenerator:
         thread_prefix = f"{thread_id} " if thread_id else ""
 
         if skip_generation:
-            Logger.print_info(f"{thread_prefix}Skipping closing credits generation due to skip_generation flag")
+            Logger.print_info(
+                f"{thread_prefix}Skipping closing credits generation due to skip_generation flag"
+            )
             return None, None
 
         Logger.print_info(f"{thread_prefix}Generating closing credits with prompt: {prompt}")
@@ -492,7 +551,7 @@ class MusicGenerator:
             prompt=prompt,
             story_text=story_text,
             query_dispatcher=query_dispatcher,
-            output_path=output_path
+            output_path=output_path,
         )
 
         if result:
@@ -505,7 +564,9 @@ class MusicGenerator:
                 lyrics = None
 
             if closing_credits_path:
-                Logger.print_info(f"{thread_prefix}Successfully generated closing credits at: {closing_credits_path}")
+                Logger.print_info(
+                    f"{thread_prefix}Successfully generated closing credits at: {closing_credits_path}"
+                )
                 if lyrics:
                     Logger.print_info(f"{thread_prefix}Generated lyrics: {lyrics}")
                 return closing_credits_path, lyrics
@@ -519,9 +580,9 @@ class MusicGenerator:
         story_text: str,
         output_dir: str,
         skip_generation: bool = False,
-        query_dispatcher: Optional[Any] = None,
-        thread_id: Optional[str] = None
-    ) -> Tuple[Optional[str], Optional[str]]:
+        query_dispatcher: Any | None = None,
+        thread_id: str | None = None,
+    ) -> tuple[str | None, str | None]:
         """Get closing credits either from file or by generating from prompt.
 
         Args:
@@ -539,13 +600,13 @@ class MusicGenerator:
         """
         thread_prefix = f"{thread_id} " if thread_id else ""
 
-        if not hasattr(config, 'closing_credits') or not config.closing_credits:
+        if not hasattr(config, "closing_credits") or not config.closing_credits:
             Logger.print_info(f"{thread_prefix}No closing credits configuration found")
             return None, None
 
         # Get file and prompt settings
-        closing_credits_path = getattr(config.closing_credits, 'file', None)
-        closing_credits_prompt = getattr(config.closing_credits, 'prompt', None)
+        closing_credits_path = getattr(config.closing_credits, "file", None)
+        closing_credits_prompt = getattr(config.closing_credits, "prompt", None)
 
         # Validate settings
         if closing_credits_path is not None and closing_credits_prompt is not None:
@@ -556,7 +617,9 @@ class MusicGenerator:
             return None, None
 
         if closing_credits_path is None and closing_credits_prompt is None:
-            Logger.print_error(f"{thread_prefix}Closing credits path and prompt cannot both be None")
+            Logger.print_error(
+                f"{thread_prefix}Closing credits path and prompt cannot both be None"
+            )
             return None, None
 
         # Get closing credits from file or generate from prompt
@@ -569,5 +632,5 @@ class MusicGenerator:
                 output_dir,
                 skip_generation,
                 query_dispatcher,
-                thread_id
+                thread_id,
             )

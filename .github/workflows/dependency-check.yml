@@ -1,0 +1,57 @@
+name: Dependency Check
+
+on:
+  schedule:
+    # Run weekly on Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check-dependencies:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pip-audit safety
+
+    - name: Install package dependencies
+      run: |
+        pip install -e .
+
+    - name: Check for security vulnerabilities (pip-audit)
+      run: |
+        pip-audit --desc
+      continue-on-error: true
+
+    - name: Check for known vulnerabilities (safety)
+      run: |
+        safety check --json --output safety-report.json || true
+        if [ -f safety-report.json ]; then
+          cat safety-report.json
+        fi
+      continue-on-error: true
+
+    - name: Check for outdated dependencies
+      run: |
+        pip list --outdated
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          safety-report.json
+        if-no-files-found: ignore
+

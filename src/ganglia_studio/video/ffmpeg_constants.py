@@ -18,21 +18,18 @@ AUDIO_SAMPLE_RATE = "48000"  # 48kHz
 AUDIO_CHANNELS = "2"  # Stereo
 
 # Common FFmpeg arguments that can be extended() into command lists
-VIDEO_ENCODING_ARGS = [
-    "-c:v", VIDEO_CODEC,
-    "-pix_fmt", VIDEO_PIXEL_FORMAT
-]
+VIDEO_ENCODING_ARGS = ["-c:v", VIDEO_CODEC, "-pix_fmt", VIDEO_PIXEL_FORMAT]
 
 AUDIO_ENCODING_ARGS = [
-    "-c:a", AUDIO_CODEC,
-    "-b:a", AUDIO_BITRATE,
-    "-ar", AUDIO_SAMPLE_RATE,
-    "-ac", AUDIO_CHANNELS
+    "-c:a",
+    AUDIO_CODEC,
+    "-b:a",
+    AUDIO_BITRATE,
+    "-ar",
+    AUDIO_SAMPLE_RATE,
+    "-ac",
+    AUDIO_CHANNELS,
 ]
 
 # For image-based videos (like our segments)
-SLIDESHOW_VIDEO_ARGS = [
-    "-c:v", VIDEO_CODEC,
-    "-tune", VIDEO_TUNE,
-    "-pix_fmt", VIDEO_PIXEL_FORMAT
-]
+SLIDESHOW_VIDEO_ARGS = ["-c:v", VIDEO_CODEC, "-tune", VIDEO_TUNE, "-pix_fmt", VIDEO_PIXEL_FORMAT]

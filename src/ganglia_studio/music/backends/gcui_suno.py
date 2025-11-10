@@ -3,18 +3,21 @@
 import os
 import time
 from datetime import datetime
+
 import requests
 from ganglia_common.logger import Logger
+from ganglia_common.utils.file_utils import get_tempdir
+
 from ganglia_studio.music.backends.base import MusicBackend
 from ganglia_studio.music.backends.suno_interface import SunoInterface
-from ganglia_common.utils.file_utils import get_tempdir
+
 
 class GcuiSunoBackend(MusicBackend, SunoInterface):
     """gcui-art/suno-api implementation for music generation."""
 
     def __init__(self):
         """Initialize the backend with configuration."""
-        self.api_base_url = os.getenv('SUNO_API_URL', None)
+        self.api_base_url = os.getenv("SUNO_API_URL", None)
         self.audio_directory = get_tempdir() + "/music"
         os.makedirs(self.audio_directory, exist_ok=True)
 
@@ -25,22 +28,25 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
                 if response.status_code != 200:
                     raise ConnectionError(f"Failed to connect to Suno API: {response.status_code}")
                 quota_info = response.json()
-                Logger.print_info(f"Connected to Suno API. Credits remaining: {quota_info.get('credits_left', 'unknown')}")
+                Logger.print_info(
+                    f"Connected to Suno API. Credits remaining: {quota_info.get('credits_left', 'unknown')}"
+                )
             except Exception as e:
                 Logger.print_error(f"Failed to initialize Suno API connection: {str(e)}")
                 # Don't raise here - let start_generation handle errors
+
     def start_generation(
-            self,
-            prompt: str,
-            with_lyrics: bool = False,
-            title: str = None,
-            tags: str = None,
-            story_text: str = None,
-            wait_audio: bool = False,
-            query_dispatcher = None,
-            model: str = 'chirp-v3-5',
-            duration: int = None
-        ) -> str:
+        self,
+        prompt: str,
+        with_lyrics: bool = False,
+        title: str = None,
+        tags: str = None,
+        story_text: str = None,
+        wait_audio: bool = False,
+        query_dispatcher=None,
+        model: str = "chirp-v3-5",
+        duration: int = None,
+    ) -> str:
         """Start the generation process via API.
 
         Args:
@@ -67,7 +73,7 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
                 lyrics_response = requests.post(
                     f"{self.api_base_url}/api/generate_lyrics",
                     json={"prompt": story_text},
-                    timeout=30
+                    timeout=30,
                 )
                 if lyrics_response.status_code != 200:
                     Logger.print_error(f"Failed to generate lyrics: {lyrics_response.text}")
@@ -75,7 +81,9 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
                 lyrics_data = lyrics_response.json()
 
                 # Use default credits duration if none specified
-                actual_duration = duration if duration is not None else self.DEFAULT_CREDITS_DURATION
+                actual_duration = (
+                    duration if duration is not None else self.DEFAULT_CREDITS_DURATION
+                )
 
                 # Enhance prompt with duration and title context
                 enhanced_prompt = f"Create a {actual_duration}-second {prompt}"
@@ -85,16 +93,18 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
                 # Use custom_generate for more control over lyrics and style
                 data = {
                     "prompt": enhanced_prompt,  # Use the enhanced prompt with duration
-                    "lyrics": lyrics_data.get('text', ''),  # Get generated lyrics
-                    "tags": tags or 'folk acoustic',  # Use provided tags or default
-                    "title": title or 'Generated Song',  # Use provided title or default
+                    "lyrics": lyrics_data.get("text", ""),  # Get generated lyrics
+                    "tags": tags or "folk acoustic",  # Use provided tags or default
+                    "title": title or "Generated Song",  # Use provided title or default
                     "make_instrumental": False,
-                    "wait_audio": wait_audio
+                    "wait_audio": wait_audio,
                 }
                 endpoint = f"{self.api_base_url}/api/custom_generate"
             else:
                 # Use default credits duration for instrumentals if none specified
-                actual_duration = duration if duration is not None else self.DEFAULT_CREDITS_DURATION
+                actual_duration = (
+                    duration if duration is not None else self.DEFAULT_CREDITS_DURATION
+                )
 
                 # Enhance prompt with duration and title context
                 enhanced_prompt = f"Create a {actual_duration}-second {prompt}"
@@ -104,10 +114,10 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
                 # Use standard generate for instrumental
                 data = {
                     "prompt": enhanced_prompt,  # Use the enhanced prompt with duration
-                    "tags": tags or 'instrumental',  # Use provided tags or default
-                    "title": title or 'Generated Instrumental',  # Use provided title or default
+                    "tags": tags or "instrumental",  # Use provided tags or default
+                    "title": title or "Generated Instrumental",  # Use provided title or default
                     "make_instrumental": True,
-                    "wait_audio": wait_audio
+                    "wait_audio": wait_audio,
                 }
                 endpoint = f"{self.api_base_url}/api/generate"
 
@@ -127,7 +137,7 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
                 # Store all job IDs for tracking
                 job_ids = []
                 for song in response_data:
-                    job_id = song.get('id')
+                    job_id = song.get("id")
                     if job_id:
                         self._save_start_time(job_id)
                         job_ids.append(job_id)
@@ -155,13 +165,13 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
                 return "Error: Invalid response format", 0
 
             song_data = response_data[0]
-            status = song_data.get('status', '')
+            status = song_data.get("status", "")
 
             # Return 100% for completed songs
-            if status == 'complete':
+            if status == "complete":
                 return status, 100.0
 
-            if status == 'error':
+            if status == "error":
                 return f"Error: {song_data.get('error', 'Unknown error')}", 0.0
 
             # For in-progress songs, estimate based on time
@@ -195,10 +205,10 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
                 return None
 
             song_data = response_data[0]
-            if song_data.get('status') != 'complete':
+            if song_data.get("status") != "complete":
                 return None
 
-            audio_url = song_data.get('audio_url')
+            audio_url = song_data.get("audio_url")
             Logger.print_info(f"Audio URL: {audio_url}")
             if not audio_url:
                 return None
@@ -220,10 +230,10 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
                 Logger.print_error(f"Failed to download audio: {response.text}")
                 return None
 
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             audio_path = os.path.join(self.audio_directory, f"suno_{job_id}_{timestamp}.mp3")
 
-            with open(audio_path, 'wb') as f:
+            with open(audio_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
@@ -238,20 +248,27 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
     def _save_start_time(self, job_id: str):
         """Save the start time of a job for progress estimation."""
         path = os.path.join(self.audio_directory, f"{job_id}_start_time")
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(str(time.time()))
 
     def _get_start_time(self, job_id: str) -> float:
         """Get the start time of a job for progress estimation."""
         try:
             path = os.path.join(self.audio_directory, f"{job_id}_start_time")
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, encoding="utf-8") as f:
                 return float(f.read().strip())
-        except (IOError, ValueError) as e:
+        except (OSError, ValueError) as e:
             Logger.print_error(f"Failed to get start time for job {job_id}: {e}")
             return time.time()
 
-    def generate_instrumental(self, prompt: str, title: str = None, tags: str = None, wait_audio: bool = False, duration: int = 30) -> str:
+    def generate_instrumental(
+        self,
+        prompt: str,
+        title: str = None,
+        tags: str = None,
+        wait_audio: bool = False,
+        duration: int = 30,
+    ) -> str:
         """Generate instrumental music (blocking)."""
         job_id = self.start_generation(
             prompt=prompt,
@@ -259,7 +276,7 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
             title=title,
             tags=tags,
             wait_audio=wait_audio,
-            duration=duration
+            duration=duration,
         )
         if not job_id:
             return None
@@ -271,15 +288,15 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
             time.sleep(5)
 
     def generate_with_lyrics(
-            self,
-            prompt: str,
-            story_text: str,
-            title: str = None,
-            tags: str = None,
-            query_dispatcher = None,
-            wait_audio: bool = False,
-            duration: int = None
-        ) -> tuple[str, str]:
+        self,
+        prompt: str,
+        story_text: str,
+        title: str = None,
+        tags: str = None,
+        query_dispatcher=None,
+        wait_audio: bool = False,
+        duration: int = None,
+    ) -> tuple[str, str]:
         """Generate music with lyrics (blocking).
 
         Args:
@@ -302,7 +319,7 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
             tags=tags,
             query_dispatcher=query_dispatcher,
             wait_audio=wait_audio,
-            duration=duration
+            duration=duration,
         )
         if not job_id:
             return None, None
@@ -311,13 +328,11 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
         lyrics = None
         try:
             lyrics_response = requests.post(
-                f"{self.api_base_url}/api/generate_lyrics",
-                json={"prompt": story_text},
-                timeout=30
+                f"{self.api_base_url}/api/generate_lyrics", json={"prompt": story_text}, timeout=30
             )
             if lyrics_response.status_code == 200:
                 lyrics_data = lyrics_response.json()
-                lyrics = lyrics_data.get('text', '')
+                lyrics = lyrics_data.get("text", "")
         except Exception as e:
             Logger.print_error(f"Failed to extract lyrics: {str(e)}")
             return None, None

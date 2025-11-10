@@ -3,24 +3,27 @@
 import os
 import time
 from datetime import datetime
+
 import requests
 from ganglia_common.logger import Logger
-from ganglia_studio.music.backends.base import MusicBackend
-from ganglia_studio.music.backends.suno_interface import SunoInterface
 from ganglia_common.utils.file_utils import get_tempdir
 from ganglia_common.utils.retry_utils import exponential_backoff
+
+from ganglia_studio.music.backends.base import MusicBackend
+from ganglia_studio.music.backends.suno_interface import SunoInterface
+
 
 class SunoApiOrgBackend(MusicBackend, SunoInterface):
     """SunoApi.org implementation for music generation."""
 
     def __init__(self):
         """Initialize the backend with configuration."""
-        self.api_base_url = 'https://apibox.erweima.ai/api/v1'
-        self.api_key = os.getenv('SUNO_API_ORG_KEY')
+        self.api_base_url = "https://apibox.erweima.ai/api/v1"
+        self.api_key = os.getenv("SUNO_API_ORG_KEY")
 
         self.headers = {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json'
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
         }
         self.audio_directory = get_tempdir() + "/music"
         os.makedirs(self.audio_directory, exist_ok=True)
@@ -29,39 +32,43 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
 
     def _make_api_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
         """Make an API request with retries."""
+
         def _request():
             response = requests.request(method, endpoint, **kwargs)
             if response.status_code == 401:
-                Logger.print_warning(f"Authentication failed (401) - will retry in a moment...")
+                Logger.print_warning("Authentication failed (401) - will retry in a moment...")
                 time.sleep(2)  # Add a minimum delay before retry
                 raise Exception("Authentication failed - retrying...")
             return response
+
         return exponential_backoff(_request, max_retries=5, initial_delay=5.0)
 
     def start_generation(
-            self,
-            prompt: str,
-            with_lyrics: bool = False,
-            title: str = None,
-            tags: str = None,
-            story_text: str = None,
-            wait_audio: bool = False,
-            query_dispatcher = None,
-            model: str = 'V3_5',
-            duration: int = None
-        ) -> str:
+        self,
+        prompt: str,
+        with_lyrics: bool = False,
+        title: str = None,
+        tags: str = None,
+        story_text: str = None,
+        wait_audio: bool = False,
+        query_dispatcher=None,
+        model: str = "V3_5",
+        duration: int = None,
+    ) -> str:
         """Start the generation process via API."""
         if not self.api_key:
-            raise EnvironmentError("Environment variable 'SUNO_API_ORG_KEY' is not set.")
+            raise OSError("Environment variable 'SUNO_API_ORG_KEY' is not set.")
         try:
             # Ensure model is set to a valid value
-            if not model or model not in ['V3_5', 'V4']:
+            if not model or model not in ["V3_5", "V4"]:
                 Logger.print_warning(f"Invalid model '{model}', defaulting to 'V3_5'")
-                model = 'V3_5'
+                model = "V3_5"
 
             # Use appropriate duration based on type
             if with_lyrics:
-                actual_duration = duration if duration is not None else self.DEFAULT_CREDITS_DURATION
+                actual_duration = (
+                    duration if duration is not None else self.DEFAULT_CREDITS_DURATION
+                )
             else:
                 actual_duration = duration if duration is not None else 30
 
@@ -97,7 +104,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
                         "instrumental": False,
                         "customMode": True,
                         "callBackUrl": "https://example.com/callback",
-                        "model": model  # Add model parameter
+                        "model": model,  # Add model parameter
                     }
                 else:
                     # In non-custom mode, send story_text as lyrics
@@ -107,7 +114,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
                         "instrumental": False,
                         "customMode": False,
                         "callBackUrl": "https://example.com/callback",
-                        "model": model  # Add model parameter
+                        "model": model,  # Add model parameter
                     }
             else:
                 # Handle instrumental cases
@@ -119,7 +126,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
                         "instrumental": True,
                         "customMode": True,
                         "callBackUrl": "https://example.com/callback",
-                        "model": model  # Add model parameter
+                        "model": model,  # Add model parameter
                     }
                 else:
                     data = {
@@ -127,15 +134,11 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
                         "instrumental": True,
                         "customMode": False,
                         "callBackUrl": "https://example.com/callback",
-                        "model": model  # Add model parameter
+                        "model": model,  # Add model parameter
                     }
 
             response = self._make_api_request(
-                'post',
-                f"{self.api_base_url}/generate",
-                headers=self.headers,
-                json=data,
-                timeout=30
+                "post", f"{self.api_base_url}/generate", headers=self.headers, json=data, timeout=30
             )
 
             if response.status_code != 200:
@@ -143,7 +146,10 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
                 return None
 
             response_data = response.json()
-            if response_data.get('code') == 429 and "credits are insufficient" in response_data.get('msg', '').lower():
+            if (
+                response_data.get("code") == 429
+                and "credits are insufficient" in response_data.get("msg", "").lower()
+            ):
                 warning_msg = """
 ╔════════════════════════════════════════════════════════════════════╗
 ║                       INSUFFICIENT CREDITS                          ║
@@ -154,15 +160,15 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
 ║                                                                    ║
 ║  Error: {msg}                                                      ║
 ╚════════════════════════════════════════════════════════════════════╝
-""".format(msg=response_data.get('msg'))
+""".format(msg=response_data.get("msg"))
                 Logger.print_warning(warning_msg)
                 # Raise an exception to trigger retry
                 raise RuntimeError("Insufficient credits - will retry after delay")
-            elif response_data.get('code') != 200:  # Check other API response codes
+            elif response_data.get("code") != 200:  # Check other API response codes
                 Logger.print_error(f"API error: {response_data.get('msg')}")
                 return None
 
-            job_id = response_data.get('data', {}).get('taskId')  # Updated to use taskId
+            job_id = response_data.get("data", {}).get("taskId")  # Updated to use taskId
 
             if job_id:
                 self._save_start_time(job_id)
@@ -179,11 +185,11 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
         """Check the progress of a generation job via API."""
         try:
             response = self._make_api_request(
-                'get',
+                "get",
                 f"{self.api_base_url}/generate/record-info",
                 params={"taskId": job_id},
                 headers=self.headers,
-                timeout=10
+                timeout=10,
             )
 
             # Logger.print_info(f"Progress check response: {response.text}") # DEBUG
@@ -192,20 +198,21 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
                 return f"Error: HTTP {response.status_code}", 0
 
             response_data = response.json()
-            if response_data.get('code') != 200:
+            if response_data.get("code") != 200:
                 return f"Error: {response_data.get('msg')}", 0
 
-            generation_data = response_data.get('data', {})
-            status = generation_data.get('status', '').upper()
+            generation_data = response_data.get("data", {})
+            status = generation_data.get("status", "").upper()
 
             # Get title for status message
-            param_str = generation_data.get('param', '{}')
+            param_str = generation_data.get("param", "{}")
             try:
                 import json
+
                 params = json.loads(param_str)
-                title = params.get('title', 'Untitled')
+                title = params.get("title", "Untitled")
             except:
-                title = 'Untitled'
+                title = "Untitled"
 
             # Calculate elapsed time and progress
             elapsed = time.time() - self._get_start_time(job_id)
@@ -214,29 +221,29 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             time_status = f"[{int(elapsed)}s/{expected_duration}s]"
 
             # Check for success states first
-            if status in ['SUCCESS', 'FIRST_SUCCESS']:
-                generation_response = generation_data.get('response') or {}
-                suno_data = generation_response.get('sunoData', [])
-                if suno_data and suno_data[0].get('streamAudioUrl'):
+            if status in ["SUCCESS", "FIRST_SUCCESS"]:
+                generation_response = generation_data.get("response") or {}
+                suno_data = generation_response.get("sunoData", [])
+                if suno_data and suno_data[0].get("streamAudioUrl"):
                     Logger.print_info(f"Found stream audio URL in {status} state")
                     return "complete", 100.0
                 Logger.print_info(f"No stream audio URL yet in {status} state")
                 return f"{title} - Finalizing {time_status}", 99.0
 
             # Handle other known states
-            if status == 'PENDING':
+            if status == "PENDING":
                 return f"{title} - Initializing {time_status}", min(20.0, base_progress)
-            elif status == 'TEXT_SUCCESS':
+            elif status == "TEXT_SUCCESS":
                 return f"{title} - Processing lyrics {time_status}", min(99.0, base_progress + 20)
-            elif status == 'PROCESSING':
+            elif status == "PROCESSING":
                 return f"{title} - Processing {time_status}", base_progress
-            elif status == 'CREATE_TASK_FAILED':
+            elif status == "CREATE_TASK_FAILED":
                 return f"{title} - Error: Task creation failed", 0.0
-            elif status == 'GENERATE_AUDIO_FAILED':
+            elif status == "GENERATE_AUDIO_FAILED":
                 return f"{title} - Error: Audio generation failed", 0.0
-            elif status == 'CALLBACK_EXCEPTION':
+            elif status == "CALLBACK_EXCEPTION":
                 return f"{title} - Error: Callback failed", 0.0
-            elif status == 'SENSITIVE_WORD_ERROR':
+            elif status == "SENSITIVE_WORD_ERROR":
                 return f"{title} - Error: Contains sensitive words", 0.0
             else:
                 # Log unexpected status
@@ -252,11 +259,11 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
         try:
             Logger.print_info(f"Getting result for job {job_id}")
             response = self._make_api_request(
-                'get',
+                "get",
                 f"{self.api_base_url}/generate/record-info",
                 params={"taskId": job_id},
                 headers=self.headers,
-                timeout=10
+                timeout=10,
             )
 
             Logger.print_info(f"Result response: {response.text}")
@@ -266,25 +273,25 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
                 return None
 
             response_data = response.json()
-            if response_data.get('code') != 200:
+            if response_data.get("code") != 200:
                 Logger.print_error(f"API error: {response_data.get('msg')}")
                 return None
 
-            generation_data = response_data.get('data', {})
-            status = generation_data.get('status', '').upper()
+            generation_data = response_data.get("data", {})
+            status = generation_data.get("status", "").upper()
 
             # Accept both success states
-            if status not in ['SUCCESS', 'FIRST_SUCCESS']:
+            if status not in ["SUCCESS", "FIRST_SUCCESS"]:
                 Logger.print_error(f"Generation not in success state: {status}")
                 return None
 
             # Get the audio URL from sunoData
-            suno_data = generation_data.get('response', {}).get('sunoData', [])
+            suno_data = generation_data.get("response", {}).get("sunoData", [])
             if not suno_data:
                 Logger.print_error("No suno data in response")
                 return None
 
-            audio_url = suno_data[0].get('streamAudioUrl')
+            audio_url = suno_data[0].get("streamAudioUrl")
             if not audio_url:
                 Logger.print_error("No stream audio URL in response")
                 return None
@@ -295,7 +302,15 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             Logger.print_error(f"Failed to get result: {str(e)}")
             return None
 
-    def generate_instrumental(self, prompt: str, title: str = None, tags: str = None, wait_audio: bool = False, duration: int = 30, model: str = 'V3_5') -> str:
+    def generate_instrumental(
+        self,
+        prompt: str,
+        title: str = None,
+        tags: str = None,
+        wait_audio: bool = False,
+        duration: int = 30,
+        model: str = "V3_5",
+    ) -> str:
         """Generate instrumental music from a text prompt.
 
         Args:
@@ -317,7 +332,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             tags=tags,
             wait_audio=wait_audio,
             duration=duration,
-            model=model
+            model=model,
         )
         if not job_id:
             Logger.print_error("Failed to start generation")
@@ -341,15 +356,15 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
         return self.get_result(job_id)
 
     def generate_with_lyrics(
-            self,
-            prompt: str,
-            story_text: str,
-            title: str = None,
-            tags: str = None,
-            query_dispatcher = None,
-            wait_audio: bool = False,
-            duration: int = None
-        ) -> tuple[str, str]:
+        self,
+        prompt: str,
+        story_text: str,
+        title: str = None,
+        tags: str = None,
+        query_dispatcher=None,
+        wait_audio: bool = False,
+        duration: int = None,
+    ) -> tuple[str, str]:
         """Generate music with lyrics (blocking)."""
         job_id = self.start_generation(
             prompt=prompt,
@@ -359,7 +374,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             tags=tags,
             query_dispatcher=query_dispatcher,
             wait_audio=wait_audio,
-            duration=duration
+            duration=duration,
         )
         if not job_id:
             return None, None
@@ -374,24 +389,19 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
     def _download_audio(self, audio_url: str, job_id: str) -> str:
         """Download the generated audio file."""
         try:
-            response = self._make_api_request(
-                'get',
-                audio_url,
-                stream=True,
-                timeout=30
-            )
+            response = self._make_api_request("get", audio_url, stream=True, timeout=30)
 
             if response.status_code != 200:
                 Logger.print_error(f"Failed to download audio: HTTP {response.status_code}")
                 return None
 
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             audio_path = os.path.join(self.audio_directory, f"suno_{job_id}_{timestamp}.mp3")
 
-            total_size = int(response.headers.get('content-length', 0))
+            total_size = int(response.headers.get("content-length", 0))
             bytes_written = 0
 
-            with open(audio_path, 'wb') as f:
+            with open(audio_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         bytes_written += len(chunk)
@@ -401,7 +411,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             return audio_path
 
         except requests.exceptions.Timeout:
-            Logger.print_error(f"Download timed out after 30 seconds")
+            Logger.print_error("Download timed out after 30 seconds")
             Logger.print_error("Failed to add background music")
             return None
         except Exception as e:
@@ -412,15 +422,15 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
     def _save_start_time(self, job_id: str):
         """Save the start time of a job for progress estimation."""
         path = os.path.join(self.audio_directory, f"{job_id}_start_time")
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(str(time.time()))
 
     def _get_start_time(self, job_id: str) -> float:
         """Get the start time of a job for progress estimation."""
         try:
             path = os.path.join(self.audio_directory, f"{job_id}_start_time")
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, encoding="utf-8") as f:
                 return float(f.read().strip())
-        except (IOError, ValueError) as e:
+        except (OSError, ValueError) as e:
             Logger.print_error(f"Failed to get start time for job {job_id}: {e}")
             return time.time()

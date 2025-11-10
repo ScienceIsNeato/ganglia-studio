@@ -4,9 +4,18 @@ import random
 from ganglia_common.logger import Logger
 
 example_lyrical_styles = [
-    "rock", "pop", "jazz", "blues", "hip hop",
-    "country", "classical", "reggae", "metal", "folk"
+    "rock",
+    "pop",
+    "jazz",
+    "blues",
+    "hip hop",
+    "country",
+    "classical",
+    "reggae",
+    "metal",
+    "folk",
 ]
+
 
 class LyricsGenerator:
     def __init__(self):
@@ -55,24 +64,21 @@ class LyricsGenerator:
             return json.dumps(json_data)  # Return the properly formatted JSON
         except json.JSONDecodeError:
             # If response is not valid JSON, try to extract style and lyrics from text
-            lines = response.strip().split('\n')
+            lines = response.strip().split("\n")
             style = "upbeat pop"  # Default style
             lyrics = []
 
             for line in lines:
                 line = line.strip()
                 if line.startswith('"style":'):
-                    style = line.split(':')[1].strip().strip('",')
+                    style = line.split(":")[1].strip().strip('",')
                 elif line.startswith('"lyrics":'):
-                    lyrics = [line.split(':')[1].strip().strip('",')]
-                elif not line.startswith('{') and not line.startswith('}'):
+                    lyrics = [line.split(":")[1].strip().strip('",')]
+                elif not line.startswith("{") and not line.startswith("}"):
                     lyrics.append(line.strip().strip('",'))
 
             # Create a properly formatted JSON response
-            formatted_response = {
-                "style": style,
-                "lyrics": "\n".join(lyrics)
-            }
+            formatted_response = {"style": style, "lyrics": "\n".join(lyrics)}
 
             Logger.print_info(f"Generated lyrics: {formatted_response}")
             return json.dumps(formatted_response)
@@ -88,7 +94,7 @@ class LyricsGenerator:
 
         try:
             response = query_dispatcher.send_query(prompt)
-            lyrical_style = response.strip().split('\n')[0]
+            lyrical_style = response.strip().split("\n")[0]
 
             if lyrical_style not in example_lyrical_styles:
                 lyrical_style = random.choice(example_lyrical_styles)

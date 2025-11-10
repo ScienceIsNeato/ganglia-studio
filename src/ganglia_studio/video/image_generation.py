@@ -7,20 +7,20 @@ This module provides functionality for:
 - Managing image metadata and attributes
 """
 
-import json
 import os
+import textwrap
+import time
+from datetime import datetime
+from io import BytesIO
+
 import openai
 import requests
-from PIL import Image, ImageDraw, ImageFont
-import textwrap
-from datetime import datetime
 from ganglia_common.logger import Logger
-import time
-from typing import Optional, Tuple, List, Any
-from io import BytesIO
 from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
+from PIL import Image, ImageDraw, ImageFont
 
 from ganglia_studio.video.story_generation import filter_text
+
 
 def generate_image(
     sentence: str,
@@ -29,10 +29,10 @@ def generate_image(
     image_index: int,
     total_images: int,
     query_dispatcher: ChatGPTQueryDispatcher,
-    preloaded_images_dir: Optional[str] = None,
-    thread_id: Optional[str] = None,
-    output_dir: Optional[str] = None
-) -> Tuple[Optional[str], bool]:
+    preloaded_images_dir: str | None = None,
+    thread_id: str | None = None,
+    output_dir: str | None = None,
+) -> tuple[str | None, bool]:
     """Generate an image for a given sentence.
 
     Args:
@@ -50,31 +50,16 @@ def generate_image(
         Tuple[Optional[str], bool]: Path to generated image and success flag
     """
     thread_prefix = f"{thread_id} " if thread_id else ""
-    Logger.print_info(
-        f"{thread_prefix}Generating image for: '{sentence}' "
-        f"using style '{style}'"
-    )
+    Logger.print_info(f"{thread_prefix}Generating image for: '{sentence}' using style '{style}'")
 
     # Check for preloaded image
     if preloaded_images_dir:
-        preloaded_path = os.path.join(
-            preloaded_images_dir,
-            f"image_{image_index}.png"
-        )
+        preloaded_path = os.path.join(preloaded_images_dir, f"image_{image_index}.png")
         if os.path.exists(preloaded_path):
-            filename = os.path.join(
-                output_dir,
-                f"image_{image_index}.png"
-            )
+            filename = os.path.join(output_dir, f"image_{image_index}.png")
             os.makedirs(os.path.dirname(filename), exist_ok=True)
-            save_image_without_caption(
-                preloaded_path,
-                filename,
-                thread_id=thread_id
-            )
-            Logger.print_info(
-                f"{thread_prefix}Using preloaded image from {preloaded_path}"
-            )
+            save_image_without_caption(preloaded_path, filename, thread_id=thread_id)
+            Logger.print_info(f"{thread_prefix}Using preloaded image from {preloaded_path}")
             return filename, True
 
         Logger.print_warning(
@@ -89,7 +74,7 @@ def generate_image(
             context=context,
             style=style,
             query_dispatcher=query_dispatcher,
-            thread_id=thread_id
+            thread_id=thread_id,
         )
         if not filtered_text:
             Logger.print_error(
@@ -99,10 +84,7 @@ def generate_image(
 
         # Generate output filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = os.path.join(
-            output_dir,
-            f"image_{image_index}_{timestamp}.png"
-        )
+        filename = os.path.join(output_dir, f"image_{image_index}_{timestamp}.png")
         os.makedirs(os.path.dirname(filename), exist_ok=True)
 
         # Generate image with DALL-E
@@ -112,38 +94,30 @@ def generate_image(
         )
 
         result = generate_image_with_dalle(
-            prompt=prompt,
-            output_path=filename,
-            size="1024x1024",
-            quality="standard",
-            style="vivid"
+            prompt=prompt, output_path=filename, size="1024x1024", quality="standard", style="vivid"
         )
 
         if result:
-            Logger.print_info(
-                f"{thread_prefix}Generated image {image_index} at: {filename}"
-            )
+            Logger.print_info(f"{thread_prefix}Generated image {image_index} at: {filename}")
             return result, True
 
-        Logger.print_error(
-            f"{thread_prefix}Failed to generate image {image_index}"
+        Logger.print_error(f"{thread_prefix}Failed to generate image {image_index}")
+        blank_image = generate_blank_image(
+            sentence, image_index, thread_id=thread_id, output_dir=output_dir
         )
-        blank_image = generate_blank_image(sentence, image_index, thread_id=thread_id, output_dir=output_dir)
         return blank_image, False
 
-    except (OSError, IOError) as e:
-        Logger.print_error(
-            f"{thread_prefix}Error generating image {image_index}: {str(e)}"
+    except OSError as e:
+        Logger.print_error(f"{thread_prefix}Error generating image {image_index}: {str(e)}")
+        blank_image = generate_blank_image(
+            sentence, image_index, thread_id=thread_id, output_dir=output_dir
         )
-        blank_image = generate_blank_image(sentence, image_index, thread_id=thread_id, output_dir=output_dir)
         return blank_image, False
+
 
 def generate_blank_image(
-    text: str,
-    image_index: int,
-    thread_id: Optional[str] = None,
-    output_dir: Optional[str] = None
-) -> Optional[str]:
+    text: str, image_index: int, thread_id: str | None = None, output_dir: str | None = None
+) -> str | None:
     """Generate a blank image with text overlay.
 
     Args:
@@ -166,11 +140,12 @@ def generate_blank_image(
 
         # Add text overlay
         from PIL import ImageDraw, ImageFont
+
         draw = ImageDraw.Draw(image)
 
         try:
             font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
-        except (OSError, IOError):
+        except OSError:
             font = ImageFont.load_default()
 
         # Wrap text to fit width
@@ -189,10 +164,7 @@ def generate_blank_image(
 
         # Save image
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = os.path.join(
-            output_dir,
-            f"blank_image_{image_index}_{timestamp}.png"
-        )
+        filename = os.path.join(output_dir, f"blank_image_{image_index}_{timestamp}.png")
 
         image.save(filename)
         Logger.print_info(
@@ -200,11 +172,12 @@ def generate_blank_image(
         )
         return filename
 
-    except (OSError, IOError) as e:
+    except OSError as e:
         Logger.print_error(
             f"{thread_id + ' ' if thread_id else ''}Error generating blank image {image_index}: {str(e)}"
         )
         return None
+
 
 def save_image_with_caption(
     image_url: str,
@@ -212,7 +185,7 @@ def save_image_with_caption(
     caption: str,
     current_step: int,
     total_steps: int,
-    thread_id: Optional[str] = None
+    thread_id: str | None = None,
 ) -> None:
     """Save an image from URL with a caption overlay.
 
@@ -236,18 +209,10 @@ def save_image_with_caption(
         image = Image.open(BytesIO(image_data))
 
         # Create caption overlay
-        caption_image = create_caption_overlay(
-            caption,
-            current_step,
-            total_steps,
-            image.size[0]
-        )
+        caption_image = create_caption_overlay(caption, current_step, total_steps, image.size[0])
 
         # Combine image with caption
-        final_image = Image.new('RGB', (
-            image.size[0],
-            image.size[1] + caption_image.size[1]
-        ))
+        final_image = Image.new("RGB", (image.size[0], image.size[1] + caption_image.size[1]))
         final_image.paste(image, (0, 0))
         final_image.paste(caption_image, (0, image.size[1]))
 
@@ -262,16 +227,13 @@ def save_image_with_caption(
             f"Saved to {filename}"
         )
 
-    except (OSError, IOError) as e:
-        Logger.print_error(
-            f"{thread_prefix}Error saving image with caption: {str(e)}"
-        )
+    except OSError as e:
+        Logger.print_error(f"{thread_prefix}Error saving image with caption: {str(e)}")
         raise
 
+
 def save_image_without_caption(
-    image_source: str,
-    filename: str,
-    thread_id: Optional[str] = None
+    image_source: str, filename: str, thread_id: str | None = None
 ) -> None:
     """Save image without caption from URL or local file.
 
@@ -283,7 +245,7 @@ def save_image_without_caption(
     thread_prefix = f"{thread_id} " if thread_id else ""
 
     try:
-        if image_source.startswith(('http://', 'https://')):
+        if image_source.startswith(("http://", "https://")):
             # Download from URL
             image_data = download_image(image_source)
             if not image_data:
@@ -296,24 +258,21 @@ def save_image_without_caption(
         # Save image
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         image.save(filename)
-        Logger.print_info(
-            f"{thread_prefix}Saved image without caption to {filename}"
-        )
+        Logger.print_info(f"{thread_prefix}Saved image without caption to {filename}")
 
-    except (OSError, IOError) as e:
-        Logger.print_error(
-            f"{thread_prefix}Error saving image: {str(e)}"
-        )
+    except OSError as e:
+        Logger.print_error(f"{thread_prefix}Error saving image: {str(e)}")
         raise
+
 
 def create_caption_overlay(
     caption: str,
     current_step: int,
     total_steps: int,
     width: int,
-    height: Optional[int] = None,
-    background_color: Tuple[int, int, int] = (255, 255, 255),
-    text_color: Tuple[int, int, int] = (0, 0, 0)
+    height: int | None = None,
+    background_color: tuple[int, int, int] = (255, 255, 255),
+    text_color: tuple[int, int, int] = (0, 0, 0),
 ) -> Image.Image:
     """Create an image with caption text overlay.
 
@@ -335,22 +294,18 @@ def create_caption_overlay(
             height = width // 4
 
         # Create base image
-        caption_image = Image.new('RGB', (width, height), background_color)
+        caption_image = Image.new("RGB", (width, height), background_color)
         draw = ImageDraw.Draw(caption_image)
 
         try:
             font = ImageFont.truetype(
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                height // 4
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", height // 4
             )
-        except (OSError, IOError):
+        except OSError:
             font = ImageFont.load_default()
 
         # Format caption text
-        caption_text = (
-            f"Step {current_step} of {total_steps}\n"
-            f"{textwrap.fill(caption, width=50)}"
-        )
+        caption_text = f"Step {current_step} of {total_steps}\n{textwrap.fill(caption, width=50)}"
 
         # Calculate text position for center alignment
         text_bbox = draw.textbbox((0, 0), caption_text, font=font)
@@ -364,9 +319,10 @@ def create_caption_overlay(
         draw.text((x, y), caption_text, font=font, fill=text_color)
         return caption_image
 
-    except (OSError, IOError) as e:
+    except OSError as e:
         Logger.print_error(f"Error creating caption overlay: {str(e)}")
         raise
+
 
 def generate_image_with_dalle(
     prompt: str,
@@ -375,8 +331,8 @@ def generate_image_with_dalle(
     quality: str = "standard",
     style: str = "vivid",
     retries: int = 5,
-    retry_delay: float = 60.0  # Increased default delay for rate limits
-) -> Optional[str]:
+    retry_delay: float = 60.0,  # Increased default delay for rate limits
+) -> str | None:
     """Generate an image using DALL-E.
 
     Args:
@@ -395,12 +351,7 @@ def generate_image_with_dalle(
         try:
             # Create image with DALL-E
             response = openai.images.generate(
-                model="dall-e-3",
-                prompt=prompt,
-                size=size,
-                quality=quality,
-                style=style,
-                n=1
+                model="dall-e-3", prompt=prompt, size=size, quality=quality, style=style, n=1
             )
 
             # Get image URL from response
@@ -419,17 +370,22 @@ def generate_image_with_dalle(
 
         except Exception as e:
             if attempt < retries - 1:
-                if 'Rate limit exceeded' in str(e):
-                    Logger.print_warning(f"Rate limit exceeded. Retrying in {retry_delay} seconds... (Attempt {attempt + 1} of {retries})")
+                if "Rate limit exceeded" in str(e):
+                    Logger.print_warning(
+                        f"Rate limit exceeded. Retrying in {retry_delay} seconds... (Attempt {attempt + 1} of {retries})"
+                    )
                 else:
-                    Logger.print_warning(f"Image generation failed. Retrying in {retry_delay/10} seconds... (Attempt {attempt + 1} of {retries})")
-                    retry_delay = retry_delay/10  # Use shorter delay for non-rate-limit errors
+                    Logger.print_warning(
+                        f"Image generation failed. Retrying in {retry_delay / 10} seconds... (Attempt {attempt + 1} of {retries})"
+                    )
+                    retry_delay = retry_delay / 10  # Use shorter delay for non-rate-limit errors
                 time.sleep(retry_delay)
                 continue
             Logger.print_error(f"Failed to generate image: {str(e)}")
             return None
 
-def download_image(url: str, timeout: float = 10.0) -> Optional[bytes]:
+
+def download_image(url: str, timeout: float = 10.0) -> bytes | None:
     """Download an image from a URL.
 
     Args:
@@ -447,11 +403,8 @@ def download_image(url: str, timeout: float = 10.0) -> Optional[bytes]:
         Logger.print_error(f"Failed to download image: {str(e)}")
         return None
 
-def resize_image(
-    image_path: str,
-    output_path: str,
-    target_size: Tuple[int, int]
-) -> Optional[str]:
+
+def resize_image(image_path: str, output_path: str, target_size: tuple[int, int]) -> str | None:
     """Resize an image to target dimensions.
 
     Args:
@@ -467,15 +420,14 @@ def resize_image(
             resized = img.resize(target_size, Image.Resampling.LANCZOS)
             resized.save(output_path)
             return output_path
-    except (OSError, IOError) as e:
+    except OSError as e:
         Logger.print_error(f"Error resizing image: {str(e)}")
         return None
 
+
 def process_image_batch(
-    image_paths: List[str],
-    output_dir: str,
-    target_size: Optional[Tuple[int, int]] = None
-) -> List[str]:
+    image_paths: list[str], output_dir: str, target_size: tuple[int, int] | None = None
+) -> list[str]:
     """Process a batch of images with optional resizing.
 
     Args:
@@ -502,10 +454,11 @@ def process_image_batch(
             else:
                 # Just copy the image
                 import shutil
+
                 shutil.copy2(image_path, output_path)
                 processed_paths.append(output_path)
 
-        except (OSError, IOError) as e:
+        except OSError as e:
             Logger.print_error(f"Error processing image {image_path}: {str(e)}")
             continue
 

@@ -2,24 +2,28 @@
 
 import json
 from dataclasses import dataclass
-from typing import List, Optional, Literal
+from typing import Literal
+
 
 @dataclass
 class MusicConfig:
     """Configuration for background or closing credits music."""
-    file: Optional[str] = None
-    prompt: Optional[str] = None
+
+    file: str | None = None
+    prompt: str | None = None
+
 
 @dataclass
 class TTVConfig:
     """Configuration for text-to-video generation."""
+
     style: str  # Required
-    story: List[str]  # Required
+    story: list[str]  # Required
     title: str  # Required
     caption_style: Literal["static", "dynamic"] = "static"  # Optional, defaults to static
-    background_music: Optional[MusicConfig] = None
-    closing_credits: Optional[MusicConfig] = None
-    preloaded_images_dir: Optional[str] = None  # Optional, directory containing pre-generated images
+    background_music: MusicConfig | None = None
+    closing_credits: MusicConfig | None = None
+    preloaded_images_dir: str | None = None  # Optional, directory containing pre-generated images
     music_backend: Literal["suno", "meta"] = "suno"  # Optional, defaults to suno
 
     def __iter__(self):
@@ -30,14 +34,18 @@ class TTVConfig:
         """Get a config value by key, with an optional default."""
         return getattr(self, key, default)
 
+
 def validate_music_config(config: MusicConfig) -> None:
     """Validate that a music config has either a file or a prompt."""
     if not config.file and not config.prompt:
         raise ValueError("Either file or prompt must be specified")
     if config.file is not None and config.prompt is not None:
-        raise ValueError("Cannot specify both file and prompt. Current settings: file={config.file}, prompt={config.prompt}")
+        raise ValueError(
+            "Cannot specify both file and prompt. Current settings: file={config.file}, prompt={config.prompt}"
+        )
 
-def validate_caption_style(caption_style: Optional[str]) -> str:
+
+def validate_caption_style(caption_style: str | None) -> str:
     """Validate and normalize the caption style.
 
     Args:
@@ -55,6 +63,7 @@ def validate_caption_style(caption_style: Optional[str]) -> str:
         raise ValueError(f"Invalid caption style: {caption_style}. Must be 'static' or 'dynamic'")
     return caption_style
 
+
 def load_input(ttv_config: str) -> TTVConfig:
     """Load and validate the TTV config file.
 
@@ -69,15 +78,14 @@ def load_input(ttv_config: str) -> TTVConfig:
         JSONDecodeError: If JSON is invalid
         FileNotFoundError: If config file doesn't exist
         ValueError: If music configuration is invalid"""
-    with open(ttv_config, 'r', encoding='utf-8') as json_file:
+    with open(ttv_config, encoding="utf-8") as json_file:
         data = json.load(json_file)
 
     # Create music configs if present
     background_music = None
     if "background_music" in data and data["background_music"]:
         background_music = MusicConfig(
-            file=data["background_music"].get("file"),
-            prompt=data["background_music"].get("prompt")
+            file=data["background_music"].get("file"), prompt=data["background_music"].get("prompt")
         )
         if background_music.file or background_music.prompt:
             validate_music_config(background_music)
@@ -87,8 +95,7 @@ def load_input(ttv_config: str) -> TTVConfig:
     closing_credits = None
     if "closing_credits" in data and data["closing_credits"]:
         closing_credits = MusicConfig(
-            file=data["closing_credits"].get("file"),
-            prompt=data["closing_credits"].get("prompt")
+            file=data["closing_credits"].get("file"), prompt=data["closing_credits"].get("prompt")
         )
         if closing_credits.file or closing_credits.prompt:
             validate_music_config(closing_credits)
@@ -109,7 +116,7 @@ def load_input(ttv_config: str) -> TTVConfig:
         caption_style=caption_style,
         background_music=background_music,
         closing_credits=closing_credits,
-        preloaded_images_dir=preloaded_images_dir
+        preloaded_images_dir=preloaded_images_dir,
     )
 
     return config

@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 
+
 class SunoInterface(ABC):
     """Abstract base class for Suno music generation implementations."""
 

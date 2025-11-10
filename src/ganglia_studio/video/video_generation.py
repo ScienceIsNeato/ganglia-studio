@@ -10,14 +10,16 @@ This module provides functionality for:
 import os
 import subprocess
 import threading
-from typing import List, Optional
 
 from ganglia_common.logger import Logger
+
 from ganglia_studio.utils.ffmpeg_utils import ffmpeg_thread_manager
+
 from .audio_generation import get_audio_duration
 
 # Lock for subprocess operations to avoid gRPC fork handler issues
 subprocess_lock = threading.Lock()
+
 
 def create_video_segment(image_path, audio_path, output_path, thread_id=None):
     """Create a video segment from an image and audio file.
@@ -43,27 +45,35 @@ def create_video_segment(image_path, audio_path, output_path, thread_id=None):
         # Create video segment using thread manager
         with ffmpeg_thread_manager:
             cmd = [
-                "ffmpeg", "-y",
-                "-loop", "1",
-                "-i", image_path,
-                "-i", audio_path,
-                "-c:v", "libx264",
-                "-tune", "stillimage",
-                "-c:a", "aac",
-                "-b:a", "192k",
-                "-pix_fmt", "yuv420p",
-                "-t", str(duration),  # Explicit duration is sufficient
-                output_path
+                "ffmpeg",
+                "-y",
+                "-loop",
+                "1",
+                "-i",
+                image_path,
+                "-i",
+                audio_path,
+                "-c:v",
+                "libx264",
+                "-tune",
+                "stillimage",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                "-pix_fmt",
+                "yuv420p",
+                "-t",
+                str(duration),  # Explicit duration is sufficient
+                output_path,
             ]
             with subprocess_lock:  # Protect subprocess.run from gRPC fork issues
-                result = subprocess.run(
-                    cmd,
-                    check=True,
-                    capture_output=True
-                )
+                result = subprocess.run(cmd, check=True, capture_output=True)
 
         if result.returncode != 0:
-            Logger.print_error(f"{thread_prefix}Failed to create video segment: {result.stderr.decode()}")
+            Logger.print_error(
+                f"{thread_prefix}Failed to create video segment: {result.stderr.decode()}"
+            )
             return None
 
         Logger.print_info(f"{thread_prefix}Successfully created video segment at {output_path}")
@@ -72,6 +82,7 @@ def create_video_segment(image_path, audio_path, output_path, thread_id=None):
     except (subprocess.CalledProcessError, OSError) as e:
         Logger.print_error(f"{thread_prefix}Error creating video segment: {str(e)}")
         return None
+
 
 def create_still_video_with_fade(image_path, audio_path, output_path, thread_id=None):
     """Create a still video with fade effects.
@@ -96,27 +107,36 @@ def create_still_video_with_fade(image_path, audio_path, output_path, thread_id=
         # Create video with fade using thread manager
         with ffmpeg_thread_manager:
             cmd = [
-                "ffmpeg", "-y",
-                "-loop", "1",
-                "-i", image_path,
-                "-i", audio_path,
-                "-vf", "fade=t=out:st=25:d=5",
-                "-af", f"adelay=3000|3000,afade=t=in:ss=0:d=3,afade=t=out:st={duration}:d=5",
-                "-t", str(duration + 4),  # Add 4 seconds for fade effects
-                "-c:v", "libx264",
-                "-pix_fmt", "yuv420p",
-                "-c:a", "aac",
-                "-b:a", "192k",
-                output_path
+                "ffmpeg",
+                "-y",
+                "-loop",
+                "1",
+                "-i",
+                image_path,
+                "-i",
+                audio_path,
+                "-vf",
+                "fade=t=out:st=25:d=5",
+                "-af",
+                f"adelay=3000|3000,afade=t=in:ss=0:d=3,afade=t=out:st={duration}:d=5",
+                "-t",
+                str(duration + 4),  # Add 4 seconds for fade effects
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                output_path,
             ]
-            result = subprocess.run(
-                cmd,
-                check=True,
-                capture_output=True
-            )
+            result = subprocess.run(cmd, check=True, capture_output=True)
 
         if result.returncode != 0:
-            Logger.print_error(f"{thread_prefix}Failed to create video with fade: {result.stderr.decode()}")
+            Logger.print_error(
+                f"{thread_prefix}Failed to create video with fade: {result.stderr.decode()}"
+            )
             return None
 
         Logger.print_info(f"{thread_prefix}Successfully created video with fade at {output_path}")
@@ -126,12 +146,13 @@ def create_still_video_with_fade(image_path, audio_path, output_path, thread_id=
         Logger.print_error(f"{thread_prefix}Error creating video with fade: {str(e)}")
         return None
 
+
 def append_video_segments(
-    video_segments: List[str],
-    thread_id: Optional[str] = None,
+    video_segments: list[str],
+    thread_id: str | None = None,
     output_dir: str = None,
-    force_reencode: bool = False
-) -> Optional[str]:
+    force_reencode: bool = False,
+) -> str | None:
     """Append multiple video segments together.
 
     Args:
@@ -157,20 +178,20 @@ def append_video_segments(
 
         # Concatenate segments using thread manager
         with ffmpeg_thread_manager:
-            cmd = [
-                "ffmpeg", "-y",
-                "-f", "concat",
-                "-safe", "0",
-                "-i", concat_list_path
-            ]
+            cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_list_path]
 
             if force_reencode:
                 # Re-encode both video and audio streams
-                cmd.extend([
-                    "-c:v", "libx264",  # Re-encode video
-                    "-c:a", "aac",      # Re-encode audio
-                    "-b:a", "192k"      # Set audio bitrate
-                ])
+                cmd.extend(
+                    [
+                        "-c:v",
+                        "libx264",  # Re-encode video
+                        "-c:a",
+                        "aac",  # Re-encode audio
+                        "-b:a",
+                        "192k",  # Set audio bitrate
+                    ]
+                )
             else:
                 # Just copy streams without re-encoding
                 cmd.extend(["-c", "copy"])
@@ -178,14 +199,12 @@ def append_video_segments(
             cmd.append(output_path)
 
             with subprocess_lock:  # Protect subprocess.run from gRPC fork issues
-                result = subprocess.run(
-                    cmd,
-                    check=True,
-                    capture_output=True
-                )
+                result = subprocess.run(cmd, check=True, capture_output=True)
 
         if result.returncode != 0:
-            Logger.print_error(f"{thread_prefix}Failed to concatenate segments: {result.stderr.decode()}")
+            Logger.print_error(
+                f"{thread_prefix}Failed to concatenate segments: {result.stderr.decode()}"
+            )
             return None
 
         Logger.print_info(f"{thread_prefix}Successfully appended video segments to {output_path}")

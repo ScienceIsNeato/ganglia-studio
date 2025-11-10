@@ -1,16 +1,17 @@
 """FFmpeg utilities for managing commands and thread allocation."""
 
+import multiprocessing
 import os
+import platform
 import queue
+import subprocess
 import threading
 import time
-import multiprocessing
-import platform
-import psutil
 from functools import lru_cache
-import subprocess
-from typing import Optional
+
+import psutil
 from ganglia_common.logger import Logger
+
 
 @lru_cache(maxsize=1)
 def get_system_info():
@@ -19,12 +20,13 @@ def get_system_info():
     Cached to avoid repeated system calls.
     """
     return {
-        'total_cores': multiprocessing.cpu_count(),
-        'total_memory': psutil.virtual_memory().total,
-        'platform': platform.system().lower()
+        "total_cores": multiprocessing.cpu_count(),
+        "total_memory": psutil.virtual_memory().total,
+        "platform": platform.system().lower(),
     }
 
-def get_ffmpeg_thread_count(is_ci: Optional[bool] = None) -> int:
+
+def get_ffmpeg_thread_count(is_ci: bool | None = None) -> int:
     """
     Get the optimal number of threads for FFmpeg operations.
 
@@ -40,13 +42,13 @@ def get_ffmpeg_thread_count(is_ci: Optional[bool] = None) -> int:
     """
     # Get system info from cached function
     system_info = get_system_info()
-    cpu_count = system_info['total_cores']
-    memory_gb = system_info['total_memory'] / (1024**3)
+    cpu_count = system_info["total_cores"]
+    memory_gb = system_info["total_memory"] / (1024**3)
 
     # Check if running in CI environment
     if is_ci is None:
-        ci_value = os.environ.get('CI', '')
-        is_ci = ci_value.lower() == 'true' if ci_value is not None else False
+        ci_value = os.environ.get("CI", "")
+        is_ci = ci_value.lower() == "true" if ci_value is not None else False
 
     # Memory-based thread limiting takes precedence
     # Use fewer threads when memory is constrained
@@ -68,9 +70,11 @@ def get_ffmpeg_thread_count(is_ci: Optional[bool] = None) -> int:
         return 1
     return min(16, int(cpu_count * 1.5))
 
+
 class FFmpegOperation(threading.Thread):
     """Represents a single FFmpeg operation running in a thread."""
-    def __init__(self, command: str, manager: 'FFmpegThreadManager'):
+
+    def __init__(self, command: str, manager: "FFmpegThreadManager"):
         super().__init__()
         self.command = command
         self.completed = False
@@ -109,8 +113,10 @@ class FFmpegOperation(threading.Thread):
                     except queue.Empty:
                         pass
 
+
 class FFmpegThreadManager:
     """Manages FFmpeg thread allocation across multiple concurrent operations."""
+
     def __init__(self):
         self.lock = threading.Lock()
         self.active_operations = []
@@ -134,7 +140,9 @@ class FFmpegThreadManager:
 
             # For subsequent operations, reduce thread count based on active operations
             # but never exceed the base memory-limited thread count
-            return min(base_thread_count, max(2, base_thread_count // (len(self.active_operations) + 1)))
+            return min(
+                base_thread_count, max(2, base_thread_count // (len(self.active_operations) + 1))
+            )
 
     def cleanup(self) -> None:
         """Clean up resources and reset state."""
@@ -175,8 +183,10 @@ class FFmpegThreadManager:
                 except threading.ThreadError as error:
                     Logger.print_error(f"Error during thread cleanup: {error}")
 
+
 # Global thread manager instance
 ffmpeg_thread_manager = FFmpegThreadManager()
+
 
 def run_ffmpeg_command(ffmpeg_cmd):
     """Run an FFmpeg command with managed thread allocation.
@@ -202,9 +212,7 @@ def run_ffmpeg_command(ffmpeg_cmd):
             Logger.print_info(
                 f"Running ffmpeg command with {thread_count} threads: {' '.join(cmd)}"
             )
-            result = subprocess.run(
-                cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-            )
+            result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             Logger.print_info(f"ffmpeg output: {result.stdout.decode('utf-8')}")
             return result
 
@@ -212,4 +220,3 @@ def run_ffmpeg_command(ffmpeg_cmd):
         Logger.print_error(f"ffmpeg failed with error: {error.stderr.decode('utf-8')}")
         Logger.print_error(f"ffmpeg command was: {' '.join(ffmpeg_cmd)}")
         return None
-

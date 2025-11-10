@@ -15,16 +15,18 @@ from datetime import datetime
 # Third-party imports
 import soundfile as sf
 import torch
-from transformers import AutoProcessor, MusicgenForConditionalGeneration
 
 # Local imports
 from ganglia_common.logger import Logger
-from ganglia_studio.music.backends.base import MusicBackend
 from ganglia_common.utils.file_utils import get_tempdir
+from transformers import AutoProcessor, MusicgenForConditionalGeneration
+
+from ganglia_studio.music.backends.base import MusicBackend
 
 # Set environment variables to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["TORCH_WARN_COPY_TENSOR"] = "0"  # Suppress tensor copy warning
+
 
 class MetaMusicBackend(MusicBackend):
     """Meta's MusicGen implementation for music generation."""
@@ -53,8 +55,8 @@ class MetaMusicBackend(MusicBackend):
             self.model = MusicgenForConditionalGeneration.from_pretrained(
                 self.model_name,
                 attn_implementation="eager",  # Fix for scaled_dot_product_attention warning
-                torch_dtype=torch.float32,    # Fix for tensor construction warning
-                use_safetensors=True         # Use safetensors to avoid tensor copy warnings
+                torch_dtype=torch.float32,  # Fix for tensor construction warning
+                use_safetensors=True,  # Use safetensors to avoid tensor copy warnings
             )
             self.processor = AutoProcessor.from_pretrained(self.model_name)
 
@@ -64,7 +66,9 @@ class MetaMusicBackend(MusicBackend):
             else:
                 Logger.print_info("CUDA not available, using CPU")
 
-    def start_generation(self, prompt: str, with_lyrics: bool = False, title: str = None, tags: str = None, **kwargs) -> str:
+    def start_generation(
+        self, prompt: str, with_lyrics: bool = False, title: str = None, tags: str = None, **kwargs
+    ) -> str:
         """Start the generation process in a separate thread.
 
         Args:
@@ -81,21 +85,22 @@ class MetaMusicBackend(MusicBackend):
         progress_file = os.path.join(self.progress_directory, f"{job_id}.json")
 
         # Initialize progress file
-        with open(progress_file, 'w', encoding='utf-8') as f:
-            json.dump({
-                'status': 'Starting',
-                'progress': 0,
-                'output_path': None,
-                'error': None,
-                'title': title,
-                'tags': tags
-            }, f)
+        with open(progress_file, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "status": "Starting",
+                    "progress": 0,
+                    "output_path": None,
+                    "error": None,
+                    "title": title,
+                    "tags": tags,
+                },
+                f,
+            )
 
         # Start generation thread
         thread = threading.Thread(
-            target=self._generation_thread,
-            args=(job_id, prompt),
-            kwargs=kwargs
+            target=self._generation_thread, args=(job_id, prompt), kwargs=kwargs
         )
         thread.start()
         self.active_jobs[job_id] = thread
@@ -107,9 +112,9 @@ class MetaMusicBackend(MusicBackend):
         progress_file = os.path.join(self.progress_directory, f"{job_id}.json")
 
         try:
-            with open(progress_file, 'r', encoding='utf-8') as f:
+            with open(progress_file, encoding="utf-8") as f:
                 data = json.load(f)
-                return data['status'], data['progress']
+                return data["status"], data["progress"]
         except (FileNotFoundError, json.JSONDecodeError, KeyError):
             return "Error reading progress", 0
 
@@ -118,25 +123,30 @@ class MetaMusicBackend(MusicBackend):
         progress_file = os.path.join(self.progress_directory, f"{job_id}.json")
 
         try:
-            with open(progress_file, 'r', encoding='utf-8') as f:
+            with open(progress_file, encoding="utf-8") as f:
                 data = json.load(f)
-                if data.get('error'):
+                if data.get("error"):
                     Logger.print_error(f"Generation failed: {data['error']}")
                     return None
-                return data.get('output_path')
+                return data.get("output_path")
         except (FileNotFoundError, json.JSONDecodeError):
             return None
 
-    def _update_progress(self, job_id: str, status: str, progress: float, output_path: str = None, error: str = None):
+    def _update_progress(
+        self, job_id: str, status: str, progress: float, output_path: str = None, error: str = None
+    ):
         """Update the progress file for a job."""
         progress_file = os.path.join(self.progress_directory, f"{job_id}.json")
-        with open(progress_file, 'w', encoding='utf-8') as f:
-            json.dump({
-                'status': status,
-                'progress': progress,
-                'output_path': output_path,
-                'error': error
-            }, f)
+        with open(progress_file, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "status": status,
+                    "progress": progress,
+                    "output_path": output_path,
+                    "error": error,
+                },
+                f,
+            )
 
     def _generation_thread(self, job_id: str, prompt: str, **kwargs):
         """Thread function for generating audio."""
@@ -156,7 +166,7 @@ class MetaMusicBackend(MusicBackend):
 
             self._update_progress(job_id, "Starting generation", 20)
 
-            duration_seconds = kwargs.get('duration_seconds', 30)  # Default to 30 seconds
+            duration_seconds = kwargs.get("duration_seconds", 30)  # Default to 30 seconds
             Logger.print_info(f"Generating {duration_seconds:.1f} seconds of audio")
 
             # Cap generation at 25 seconds, we'll loop if needed
@@ -167,16 +177,13 @@ class MetaMusicBackend(MusicBackend):
             generation_complete = threading.Event()
             progress_thread = threading.Thread(
                 target=self._progress_updater,
-                args=(job_id, generation_complete, generation_duration)
+                args=(job_id, generation_complete, generation_duration),
             )
             progress_thread.start()
 
             # Generate audio with explicit duration
             audio_values = self.model.generate(
-                **inputs,
-                do_sample=True,
-                guidance_scale=3,
-                max_new_tokens=max_new_tokens
+                **inputs, do_sample=True, guidance_scale=3, max_new_tokens=max_new_tokens
             )
 
             # Signal completion and wait for progress thread
@@ -189,20 +196,18 @@ class MetaMusicBackend(MusicBackend):
                 audio_data = audio_data.reshape(1, -1)
 
             self._update_progress(job_id, "Saving audio", 99)
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            sanitized_prompt = ''.join(c if c.isalnum() else '_' for c in prompt)[:50]
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            sanitized_prompt = "".join(c if c.isalnum() else "_" for c in prompt)[:50]
 
             # Save the initial clip
             temp_clip_path = os.path.join(
-                self.audio_directory,
-                f"musicgen_temp_{sanitized_prompt}_{timestamp}.wav"
+                self.audio_directory, f"musicgen_temp_{sanitized_prompt}_{timestamp}.wav"
             )
             sf.write(temp_clip_path, audio_data.T, self.sample_rate)
 
             # If we need to loop, use ffmpeg to create the final audio
             final_path = os.path.join(
-                self.audio_directory,
-                f"musicgen_{sanitized_prompt}_{timestamp}.wav"
+                self.audio_directory, f"musicgen_{sanitized_prompt}_{timestamp}.wav"
             )
 
             if duration_seconds > generation_duration:
@@ -219,28 +224,25 @@ class MetaMusicBackend(MusicBackend):
                 # And so on...
                 for i in range(num_loops - 1):
                     fade_str = (
-                        f'[0:a][1:a]acrossfade=d={crossfade_duration}:c1=tri:c2=tri[f1];'
-                        if i == 0 else
-                        f'[f{i}][{i+1}:a]acrossfade=d={crossfade_duration}:c1=tri:c2=tri[f{i+1}];'
+                        f"[0:a][1:a]acrossfade=d={crossfade_duration}:c1=tri:c2=tri[f1];"
+                        if i == 0
+                        else f"[f{i}][{i + 1}:a]acrossfade=d={crossfade_duration}:c1=tri:c2=tri[f{i + 1}];"
                     )
                     filter_complex.append(fade_str)
 
                 # Final filter string
-                filter_str = ''.join(filter_complex)
+                filter_str = "".join(filter_complex)
 
                 # Build the final command
-                cmd = ['ffmpeg', '-y']
+                cmd = ["ffmpeg", "-y"]
                 for _ in range(num_loops):
-                    cmd.extend(['-i', temp_clip_path])
+                    cmd.extend(["-i", temp_clip_path])
 
                 # Add filter complex and output mapping
-                filter_out = f'[f{num_loops-1}]atrim=0:{duration_seconds}[out]'
-                cmd.extend([
-                    '-filter_complex',
-                    filter_str + filter_out,
-                    '-map', '[out]',
-                    final_path
-                ])
+                filter_out = f"[f{num_loops - 1}]atrim=0:{duration_seconds}[out]"
+                cmd.extend(
+                    ["-filter_complex", filter_str + filter_out, "-map", "[out]", final_path]
+                )
 
                 try:
                     subprocess.run(cmd, check=True, capture_output=True)
@@ -263,7 +265,9 @@ class MetaMusicBackend(MusicBackend):
             if job_id in self.active_jobs:
                 del self.active_jobs[job_id]
 
-    def _progress_updater(self, job_id: str, complete_event: threading.Event, target_duration: float):
+    def _progress_updater(
+        self, job_id: str, complete_event: threading.Event, target_duration: float
+    ):
         """Update progress periodically while generation is running."""
         start_time = time.time()
 
@@ -279,11 +283,7 @@ class MetaMusicBackend(MusicBackend):
             estimated_tokens = min(total_tokens, int(elapsed * tokens_per_second))
             progress = min(95, (estimated_tokens / total_tokens) * 100)
 
-            self._update_progress(
-                job_id,
-                "Generating audio",
-                progress
-            )
+            self._update_progress(job_id, "Generating audio", progress)
 
             time.sleep(0.5)  # Update every half second
 

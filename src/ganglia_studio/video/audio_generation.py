@@ -9,20 +9,18 @@ This module provides functionality for:
 
 import os
 import subprocess
-import time
-from typing import Dict, List, Optional, Tuple, Union
 
 import requests
-
 from ganglia_common.logger import Logger
+
 
 def generate_audio(
     text: str,
     output_path: str,
     voice: str = "en-US-Neural2-F",
     language_code: str = "en-US",
-    thread_id: Optional[str] = None
-) -> Optional[str]:
+    thread_id: str | None = None,
+) -> str | None:
     """Generate audio from text using text-to-speech.
 
     Args:
@@ -46,42 +44,27 @@ def generate_audio(
             "https://texttospeech.googleapis.com/v1/text:synthesize",
             json={
                 "input": {"text": text},
-                "voice": {
-                    "languageCode": language_code,
-                    "name": voice
-                },
-                "audioConfig": {
-                    "audioEncoding": "LINEAR16",
-                    "pitch": 0,
-                    "speakingRate": 1.0
-                }
-            }
+                "voice": {"languageCode": language_code, "name": voice},
+                "audioConfig": {"audioEncoding": "LINEAR16", "pitch": 0, "speakingRate": 1.0},
+            },
         )
 
         if response.status_code != 200:
-            raise ValueError(
-                f"API request failed with status {response.status_code}"
-            )
+            raise ValueError(f"API request failed with status {response.status_code}")
 
         # Save audio data
         with open(output_path, "wb") as f:
             f.write(response.content)
 
-        Logger.print_info(
-            f"{thread_prefix}Generated audio saved to: {output_path}"
-        )
+        Logger.print_info(f"{thread_prefix}Generated audio saved to: {output_path}")
         return output_path
 
     except Exception as e:
-        Logger.print_error(
-            f"{thread_prefix}Error generating audio: {str(e)}"
-        )
+        Logger.print_error(f"{thread_prefix}Error generating audio: {str(e)}")
         return None
 
-def get_audio_duration(
-    audio_path: str,
-    thread_id: Optional[str] = None
-) -> Optional[float]:
+
+def get_audio_duration(audio_path: str, thread_id: str | None = None) -> float | None:
     """Get the duration of an audio file in seconds.
 
     Args:
@@ -98,34 +81,34 @@ def get_audio_duration(
         result = subprocess.run(
             [
                 "ffprobe",
-                "-v", "error",
-                "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                audio_path
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                audio_path,
             ],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
 
         duration = float(result.stdout.strip())
-        Logger.print_debug(
-            f"{thread_prefix}Audio duration: {duration:.2f} seconds"
-        )
+        Logger.print_debug(f"{thread_prefix}Audio duration: {duration:.2f} seconds")
         return duration
 
     except (subprocess.CalledProcessError, ValueError) as e:
-        Logger.print_error(
-            f"{thread_prefix}Error getting audio duration: {str(e)}"
-        )
+        Logger.print_error(f"{thread_prefix}Error getting audio duration: {str(e)}")
         return None
 
+
 def mix_audio_tracks(
-    tracks: List[str],
+    tracks: list[str],
     output_path: str,
-    volumes: Optional[List[float]] = None,
-    thread_id: Optional[str] = None
-) -> Optional[str]:
+    volumes: list[float] | None = None,
+    thread_id: str | None = None,
+) -> str | None:
     """Mix multiple audio tracks with optional volume adjustment.
 
     Args:
@@ -148,9 +131,7 @@ def mix_audio_tracks(
             volumes = [1.0] * len(tracks)
 
         if len(volumes) != len(tracks):
-            raise ValueError(
-                "Number of volume multipliers must match number of tracks"
-            )
+            raise ValueError("Number of volume multipliers must match number of tracks")
 
         # Build filter complex for mixing
         inputs = []
@@ -159,37 +140,32 @@ def mix_audio_tracks(
 
         filter_parts = []
         for i, volume in enumerate(volumes):
-            filter_parts.append(
-                f"[{i}:a]volume={volume}[a{i}]"
-            )
+            filter_parts.append(f"[{i}:a]volume={volume}[a{i}]")
 
         mix_inputs = "".join(f"[a{i}]" for i in range(len(tracks)))
-        filter_parts.append(
-            f"{mix_inputs}amix=inputs={len(tracks)}:duration=longest[out]"
-        )
+        filter_parts.append(f"{mix_inputs}amix=inputs={len(tracks)}:duration=longest[out]")
 
         filter_complex = ";".join(filter_parts)
 
         # Run ffmpeg command
         subprocess.run(
             [
-                "ffmpeg", "-y",
+                "ffmpeg",
+                "-y",
                 *inputs,
-                "-filter_complex", filter_complex,
-                "-map", "[out]",
-                output_path
+                "-filter_complex",
+                filter_complex,
+                "-map",
+                "[out]",
+                output_path,
             ],
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
-        Logger.print_info(
-            f"{thread_prefix}Mixed audio saved to: {output_path}"
-        )
+        Logger.print_info(f"{thread_prefix}Mixed audio saved to: {output_path}")
         return output_path
 
     except (subprocess.CalledProcessError, ValueError) as e:
-        Logger.print_error(
-            f"{thread_prefix}Error mixing audio tracks: {str(e)}"
-        )
+        Logger.print_error(f"{thread_prefix}Error mixing audio tracks: {str(e)}")
         return None
