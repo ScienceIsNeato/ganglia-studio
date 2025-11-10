@@ -219,8 +219,10 @@ def process_story(
         closing_credits_path = None
         closing_credits_lyrics = None
 
-        # Create music generator
-        music_generator = MusicGenerator(config=config)
+        # Create music generator only if needed
+        needs_music = (hasattr(config, "background_music") and config.background_music) or \
+                      (hasattr(config, "closing_credits") and config.closing_credits)
+        music_generator = MusicGenerator(config=config) if needs_music else None
 
         # Calculate max workers needed (segments + background music + closing credits)
         max_workers = total_segments + 2
@@ -245,7 +247,7 @@ def process_story(
 
             # Submit background music task if configured
             background_music_future = None
-            if hasattr(config, "background_music") and config.background_music:
+            if music_generator and hasattr(config, "background_music") and config.background_music:
                 background_music_future = executor.submit(
                     music_generator.get_background_music,
                     config=config,
@@ -257,7 +259,7 @@ def process_story(
 
             # Submit closing credits task if configured
             closing_credits_future = None
-            if hasattr(config, "closing_credits") and config.closing_credits:
+            if music_generator and hasattr(config, "closing_credits") and config.closing_credits:
                 closing_credits_future = executor.submit(
                     music_generator.get_closing_credits,
                     config=config,
