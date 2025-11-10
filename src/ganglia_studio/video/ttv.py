@@ -40,8 +40,8 @@ def text_to_video(config_path, skip_generation=False, tts=None, query_dispatcher
         if query_dispatcher:
             Logger.print_info("Query dispatcher provided: ChatGPTQueryDispatcher")
 
-        # Use provided TTS or initialize a new one
-        if not tts:
+        # Use provided TTS or initialize a new one (skip if skip_generation=True)
+        if not tts and not skip_generation:
             Logger.print_info("Initializing GoogleTTS...")
             tts = GoogleTTS()
 
