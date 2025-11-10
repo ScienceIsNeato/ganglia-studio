@@ -47,6 +47,10 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         brew install ffmpeg
+        # Install DejaVu Sans font
+        curl -L https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 | tar xj
+        sudo cp dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf /Library/Fonts/
+        rm -rf dejavu-fonts-ttf-2.37
 
     - name: Install Python dependencies
       run: |
