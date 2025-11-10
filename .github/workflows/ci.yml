@@ -61,7 +61,7 @@ jobs:
 
     - name: Run integration tests (skip costly)
       run: |
-        pytest tests/integration/ -v --tb=short -m "not costly" --junitxml=test-results-integration.xml
+        pytest tests/integration/ -v --tb=short -m "not costly" --junitxml=test-results-integration.xml || (( $? == 5 )) && echo "No integration tests to run (all marked as costly)"
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
