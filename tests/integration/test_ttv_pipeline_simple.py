@@ -44,7 +44,7 @@ def test_ttv_pipeline_with_skip_generation():
         "It continues its journey into the night."
     ]
     
-    create_test_config(config_path, story, style="cyberpunk")
+    create_test_config(config_path, story, style="cyberpunk", include_music=False)
     
     # Verify config was created
     config = load_config(config_path)

@@ -219,13 +219,15 @@ def parse_ttv_output_for_dir(output_log: str) -> Optional[str]:
 
 
 def create_test_config(output_path: str, story_sentences: list, 
-                       style: str = "digital art") -> str:
+                       style: str = "digital art",
+                       include_music: bool = True) -> str:
     """Create a test TTV config file.
     
     Args:
         output_path: Where to save the config
         story_sentences: List of story sentences
         style: Visual style for image generation
+        include_music: Whether to include background music config
         
     Returns:
         Path to the created config file
@@ -235,15 +237,17 @@ def create_test_config(output_path: str, story_sentences: list,
         "story": story_sentences,
         "title": "Test Video",
         "caption_style": "dynamic",
-        "background_music": {
-            "file": None,
-            "prompt": "upbeat electronic music"
-        },
         "closing_credits": {
             "file": None,
             "prompt": None
         }
     }
+    
+    if include_music:
+        config["background_music"] = {
+            "file": None,
+            "prompt": "upbeat electronic music"
+        }
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, 'w', encoding='utf-8') as f:
