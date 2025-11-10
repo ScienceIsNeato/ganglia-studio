@@ -17,6 +17,10 @@ setup(
         "pillow>=10.0.0",
         "numpy>=1.24.0",
         "requests>=2.31.0",
+        "openai-whisper>=20231117",
+        "pydub>=0.25.1",
+        "soundfile>=0.12.1",
+        "pandas>=2.0.0",
     ],
     entry_points={
         'console_scripts': [

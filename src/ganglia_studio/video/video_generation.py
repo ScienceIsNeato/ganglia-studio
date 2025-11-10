@@ -13,7 +13,7 @@ import threading
 from typing import List, Optional
 
 from ganglia_common.logger import Logger
-from ganglia_common.utils.file_utils import ffmpeg_thread_manager
+from ganglia_studio.utils.ffmpeg_utils import ffmpeg_thread_manager
 from .audio_generation import get_audio_duration
 
 # Lock for subprocess operations to avoid gRPC fork handler issues

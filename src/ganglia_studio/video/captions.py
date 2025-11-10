@@ -16,7 +16,7 @@ from PIL import ImageFont, Image, ImageDraw
 import numpy as np
 
 from ganglia_common.logger import Logger
-from ganglia_common.utils.file_utils import run_ffmpeg_command
+from ganglia_studio.utils.ffmpeg_utils import run_ffmpeg_command
 from .caption_roi import find_roi_in_frame
 from .color_utils import get_vibrant_palette
 

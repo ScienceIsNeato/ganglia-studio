@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 from ganglia_common.logger import Logger
-from ganglia_common.utils.ffmpeg_utils import run_ffmpeg_command
+from ganglia_studio.utils.ffmpeg_utils import run_ffmpeg_command
 from ganglia_common.utils.cloud_utils import upload_to_gcs
 from .audio_alignment import create_word_level_captions
 from .captions import CaptionEntry, create_dynamic_captions, create_static_captions
