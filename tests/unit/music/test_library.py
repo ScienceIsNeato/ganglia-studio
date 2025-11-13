@@ -493,7 +493,7 @@ def test_thread_id_propagation():
     backend = ThreadTestBackend()
     generator = MusicGenerator(backend=backend)
 
-    with patch('logger.Logger.print_info') as mock_log:
+    with patch('ganglia_common.logger.Logger.print_info') as mock_log:
         generator.get_background_music_from_prompt(
             prompt="test prompt",
             output_dir=os.path.join(tempfile.gettempdir(), "output"),
