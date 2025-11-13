@@ -16,10 +16,9 @@ class TestGenerateMoviePoster(unittest.TestCase):
         self.story_title = "Neon Nights"
         self.output_dir = "/tmp/test_output"
 
-    @pytest.mark.skip(reason="Patching 'client' attribute doesn't exist in story_generation module")
-    @patch('ganglia_studio.video.story_generation.client')
+    @patch('ganglia_studio.video.story_generation.get_openai_client')
     @patch('ganglia_studio.video.story_generation.save_image_without_caption')
-    def test_generate_movie_poster(self, mock_save, mock_client):
+    def test_generate_movie_poster(self, mock_save, mock_get_client):
         """Test successful movie poster generation."""
         # Setup
         filtered_story = json.dumps({
@@ -29,9 +28,11 @@ class TestGenerateMoviePoster(unittest.TestCase):
         })
         
         # Mock OpenAI client response
+        mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.data = [MagicMock(url='http://example.com/poster.png')]
         mock_client.images.generate.return_value = mock_response
+        mock_get_client.return_value = mock_client
 
         # Execute
         result = generate_movie_poster(filtered_story, self.style, self.story_title,
@@ -42,9 +43,8 @@ class TestGenerateMoviePoster(unittest.TestCase):
         mock_client.images.generate.assert_called_once()
         mock_save.assert_called_once()
 
-    @pytest.mark.skip(reason="Patching 'client' attribute doesn't exist in story_generation module")
-    @patch('ganglia_studio.video.story_generation.client')
-    def test_generate_movie_poster_dalle_failure(self, mock_client):
+    @patch('ganglia_studio.video.story_generation.get_openai_client')
+    def test_generate_movie_poster_dalle_failure(self, mock_get_client):
         """Test handling of DALL-E generation failure."""
         # Setup
         filtered_story = json.dumps({
@@ -54,12 +54,14 @@ class TestGenerateMoviePoster(unittest.TestCase):
         })
         
         # Mock DALL-E failure
+        mock_client = MagicMock()
         mock_client.images.generate.side_effect = Exception("DALL-E API error")
+        mock_get_client.return_value = mock_client
 
-        # Execute & Assert
-        with self.assertRaises(Exception):
-            generate_movie_poster(filtered_story, self.style, self.story_title,
-                                self.query_dispatcher, output_dir=self.output_dir)
+        # Execute & Assert - function should return None on error, not raise
+        result = generate_movie_poster(filtered_story, self.style, self.story_title,
+                                      self.query_dispatcher, output_dir=self.output_dir)
+        self.assertIsNone(result, "Function should return None on DALL-E error")
 
 if __name__ == '__main__':
     unittest.main()

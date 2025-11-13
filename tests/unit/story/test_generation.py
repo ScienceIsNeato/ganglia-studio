@@ -48,13 +48,14 @@ class TestStoryGeneration(unittest.TestCase):
         self.query_dispatcher.filter_content_for_dalle.assert_called_once_with(self.context)
         self.query_dispatcher.send_query.assert_not_called()
 
-    @pytest.mark.skip(reason="Patching 'client' attribute doesn't exist in story_generation module")
-    @patch('ganglia_studio.video.story_generation.client')
-    def test_generate_movie_poster_success(self, mock_client):
+    @patch('ganglia_studio.video.story_generation.get_openai_client')
+    def test_generate_movie_poster_success(self, mock_get_client):
         # Mock successful image generation
+        mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.data = [MagicMock(url='http://example.com/image.png')]
         mock_client.images.generate.return_value = mock_response
+        mock_get_client.return_value = mock_client
 
         filtered_story = json.dumps({
             "style": "science fiction",

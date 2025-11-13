@@ -175,7 +175,6 @@ def test_complex_phrase_alignment():
     assert not extra_words, f"Extra words in captions: {extra_words}"
 
 
-@pytest.mark.skip(reason="Test has UnboundLocalError bug - needs fixing")
 def test_thread_safe_model_loading():
     """Test that Whisper model is only loaded once when called from multiple threads."""
     # Create test audio using TTS
@@ -184,16 +183,18 @@ def test_thread_safe_model_loading():
     success, audio_path = tts.convert_text_to_speech(test_text)
     assert success and audio_path is not None, "Failed to generate test audio"
 
+    # Initialize outside try block to avoid UnboundLocalError in finally
+    original_load_model = whisper.load_model
+
     try:
         # Reset global variables
-        ttv.audio_alignment._whisper_model = None
-        ttv.audio_alignment._whisper_model_size = None
-        ttv.audio_alignment._model_loading = False
-        ttv.audio_alignment._model_loading_event.clear()
+        ganglia_studio.video.audio_alignment._whisper_model = None
+        ganglia_studio.video.audio_alignment._whisper_model_size = None
+        ganglia_studio.video.audio_alignment._model_loading = False
+        ganglia_studio.video.audio_alignment._model_loading_event.clear()
 
         # Track model loads
         model_load_count = 0
-        original_load_model = whisper.load_model
 
         def mock_load_model(*args, **kwargs):
             nonlocal model_load_count
