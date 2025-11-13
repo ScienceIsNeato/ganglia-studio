@@ -95,3 +95,4 @@ def test_dalle_basic_generation():
         Logger.print_error(f"Traceback: {traceback.format_exc()}")
         raise
 
+

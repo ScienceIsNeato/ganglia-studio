@@ -95,30 +95,40 @@ def find_roi_in_frame(frame, block_size=32):
     blocks_h = cropped_frame.shape[0] // block_size
     blocks_w = cropped_frame.shape[1] // block_size
 
-    for y in range(border_y, valid_y + 1, block_size):
-        for x in range(border_x, valid_x + 1, block_size):
-            # Convert pixel coordinates to block coordinates
-            block_y = y // block_size
-            block_x = x // block_size
+    # Check if frame is uniform (all activity levels are equal)
+    # This happens with solid color frames or very uniform content
+    is_uniform = np.std(activity_map) < 0.01  # Very low variance indicates uniform frame
 
-            # Ensure we don't exceed activity map bounds
-            if (
-                block_y + (roi_height // block_size) > blocks_h
-                or block_x + (roi_width // block_size) > blocks_w
-            ):
-                continue
+    if is_uniform:
+        # For uniform frames, center the ROI since there's no preferred location
+        best_x = (cropped_frame.shape[1] - roi_width) // 2
+        best_y = (cropped_frame.shape[0] - roi_height) // 2
+    else:
+        # For non-uniform frames, find the region with minimum activity
+        for y in range(border_y, valid_y + 1, block_size):
+            for x in range(border_x, valid_x + 1, block_size):
+                # Convert pixel coordinates to block coordinates
+                block_y = y // block_size
+                block_x = x // block_size
 
-            # Get activity for this region
-            region = activity_map[
-                block_y : block_y + (roi_height // block_size),
-                block_x : block_x + (roi_width // block_size),
-            ]
-            activity = np.mean(region)  # Use mean instead of sum for better scaling
+                # Ensure we don't exceed activity map bounds
+                if (
+                    block_y + (roi_height // block_size) > blocks_h
+                    or block_x + (roi_width // block_size) > blocks_w
+                ):
+                    continue
 
-            if activity < min_activity:
-                min_activity = activity
-                best_x = x
-                best_y = y
+                # Get activity for this region
+                region = activity_map[
+                    block_y : block_y + (roi_height // block_size),
+                    block_x : block_x + (roi_width // block_size),
+                ]
+                activity = np.mean(region)  # Use mean instead of sum for better scaling
+
+                if activity < min_activity:
+                    min_activity = activity
+                    best_x = x
+                    best_y = y
 
     # Adjust best_x and best_y to account for the initial buffer
     best_x += buffer_x

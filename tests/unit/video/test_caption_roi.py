@@ -104,13 +104,11 @@ def test_contrasting_color_gradient():
         assert rel_diff <= 2, f"Stroke value {actual} differs from expected {expected} by {rel_diff}%"
 
 
-@pytest.mark.skip(reason="ROI detection doesn't center on uniform/black frames (ROI at x=428 vs center x=960) - needs investigation of intended behavior")
 def test_roi_centering():
-    """Test that ROI is properly centered in the frame.
+    """Test that ROI is properly centered in uniform frames.
     
-    NOTE: Currently failing because find_roi_in_frame returns ROI centered at x=428
-    when frame center is x=960. This may be intentional behavior for uniform frames,
-    or may indicate a bug in ROI detection logic. Needs investigation.
+    For frames with uniform content (like solid colors), the ROI should be centered
+    since there's no reason to prefer one location over another.
     """
     # Create a test frame
     frame = np.zeros((1080, 1920, 3))

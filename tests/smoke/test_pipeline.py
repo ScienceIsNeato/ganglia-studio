@@ -142,3 +142,4 @@ def test_simulated_pipeline_execution():
             except Exception as e:
                 print(f"Failed to upload smoke test results to YouTube: {e}")
 
+
