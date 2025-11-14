@@ -1,0 +1,21 @@
+{
+    "style": "Minimalist grayscale with ambient electronic music",
+    "music_backend": "suno",
+    "story": [
+        "A lone stick figure stands in the darkness.",
+        "The stick figure begins to walk forward, each step deliberate and slow.",
+        "As the figure continues, its lines begin to fade at the edges.",
+        "The environment around the figure transforms, revealing the silhouette of a forest.",
+        "Finally, the figure becomes one with the forest, its lines completely integrated with the trees."
+    ],
+    "title": "A stick figure walks through the gloom",
+    "caption_style": "dynamic",
+    "background_music": {
+        "file": "tests/integration/test_data/sample_background_music.mp3",
+        "prompt": null
+    },
+    "closing_credits": {
+        "file": null,
+        "prompt": null
+    }
+}

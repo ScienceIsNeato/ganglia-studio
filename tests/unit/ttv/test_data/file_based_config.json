@@ -1,0 +1,19 @@
+{
+    "style": "digital art",
+    "music_backend": "suno",
+    "story": [
+        "A small black cat sat by the window.",
+        "She watched the birds flutter past with curious eyes.",
+        "Suddenly, a bright red butterfly caught her attention."
+    ],
+    "title": "The Curious Cat",
+    "caption_style": "static",
+    "background_music": {
+        "file": "tests/unit/ttv/test_data/background_music.mp3",
+        "prompt": null
+    },
+    "closing_credits": {
+        "file": "tests/unit/ttv/test_data/closing_credits.mp3",
+        "prompt": null
+    }
+} 

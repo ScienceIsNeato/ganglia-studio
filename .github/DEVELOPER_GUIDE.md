@@ -227,18 +227,23 @@ def test_long_running():
 ### Run Tests by Marker
 
 ```bash
-# Only unit tests
-pytest -m unit
+# Default: exclude slow tests (fast feedback, ~1 minute)
+pytest tests/unit/  # Uses default from pytest.ini: -m "not slow"
+
+# Run ALL tests including slow caption tests (~4-11 minutes)
+pytest tests/unit/ -m ""
+
+# Only slow tests (caption rendering, ~11 minutes)
+pytest -m slow
 
 # Only integration (skip costly)
 pytest -m "integration and not costly"
 
-# Only slow tests
-pytest -m slow
-
 # Everything except costly
 pytest -m "not costly"
 ```
+
+**Note:** Slow tests (mainly caption rendering) are excluded by default to save time during development. They're still available when you need them via `-m slow` or `-m ""`. CI also excludes them by default.
 
 ### Using Test Helpers
 

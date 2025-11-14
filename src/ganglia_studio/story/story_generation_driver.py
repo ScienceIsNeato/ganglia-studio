@@ -14,7 +14,7 @@ from ganglia_common.logger import Logger
 from ganglia_common.pubsub import Event, EventType, get_pubsub
 from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
 from ganglia_common.utils.file_utils import get_timestamped_ttv_dir
-from ganglia_core.interface.parse_inputs import parse_tts_interface
+from ganglia_studio.interface.parse_inputs import parse_tts_interface
 
 from ganglia_studio.video.ttv import text_to_video
 

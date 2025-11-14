@@ -1,0 +1,24 @@
+{
+    "style": "epic fantasy",
+    "music_backend": "suno",
+    "story": [
+        "In a realm beyond time, where magic flows like water and dreams take flight",
+        "Ancient dragons soar through crystal skies, their scales shimmering with otherworldly light",
+        "Deep in the heart of the Eternal Forest, where wisdom whispers through ageless trees",
+        "A prophecy unfolds, written in starlight and sealed with destiny's promise",
+        "Heroes rise from humble beginnings, their courage tested by trials untold",
+        "Through shadow and storm they journey, guided by hope's unwavering flame",
+        "Until at last, in the crucible of fate, legends are born anew"
+    ],
+    "title": "Epic Tale",
+    "caption_style": "dynamic",
+    "background_music": {
+        "file": "tests/integration/test_data/sample_background_music.mp3",
+        "prompt": null
+    },
+    "closing_credits": {
+        "file": "tests/integration/test_data/sample_closing_credits.mp3",
+        "prompt": null
+    },
+    "preloaded_images_dir": "tests/unit/ttv/test_data/epic_tale_images"
+} 

@@ -1,0 +1,20 @@
+{
+    "style": "digital art",
+    "music_backend": "suno",
+    "story": [
+        "A small black cat sat by the window.",
+        "She watched the birds flutter past with curious eyes.",
+        "Suddenly, a bright red butterfly caught her attention."
+    ],
+    "title": "The Curious Cat",
+    "caption_style": "dynamic",
+    "background_music": {
+        "file": null,
+        "prompt": "Create ambient electronic music that captures the curiosity of a cat"
+    },
+    "closing_credits": {
+        "file": null,
+        "prompt": "Create upbeat celebratory music with cat-themed lyrics"
+    },
+    "preloaded_images_dir": "tests/unit/ttv/test_data/images"
+} 
