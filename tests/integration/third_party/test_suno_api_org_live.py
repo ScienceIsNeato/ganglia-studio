@@ -11,7 +11,7 @@ import pytest
 from tests.test_helpers import play_media
 from ganglia_studio.music.backends.suno_api_org import SunoApiOrgBackend
 
-@pytest.mark.live
+@pytest.mark.costly
 def test_generate_instrumental():
     """Test generating an instrumental song."""
     # Initialize the backend
@@ -55,7 +55,7 @@ def test_generate_instrumental():
     print(f"\nGenerated instrumental file: {audio_path}")
     play_media(audio_path)
 
-@pytest.mark.live
+@pytest.mark.costly
 def test_generate_with_lyrics():
     """Test generating a song with lyrics."""
     # Initialize the backend

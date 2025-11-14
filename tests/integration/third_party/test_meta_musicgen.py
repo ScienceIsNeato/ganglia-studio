@@ -40,7 +40,7 @@ def wait_for_spacebar():
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-@pytest.mark.live
+@pytest.mark.costly
 def test_meta_musicgen_generation():
     """Test music generation using Meta MusicGen."""
     backend = MetaMusicBackend()
@@ -72,7 +72,7 @@ def test_meta_musicgen_generation():
     except (RuntimeError, IOError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")
 
-@pytest.mark.live
+@pytest.mark.costly
 def test_meta_musicgen_with_duration():
     """Test music generation with specified duration."""
     backend = MetaMusicBackend()
@@ -105,7 +105,7 @@ def test_meta_musicgen_with_duration():
     except (RuntimeError, IOError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")
 
-@pytest.mark.live
+@pytest.mark.costly
 def test_meta_musicgen_with_seed():
     """Test music generation with specified seed."""
     backend = MetaMusicBackend()
@@ -138,7 +138,7 @@ def test_meta_musicgen_with_seed():
     except (RuntimeError, IOError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")
 
-@pytest.mark.live
+@pytest.mark.costly
 def test_meta_musicgen_with_duration_and_seed():
     """Test music generation with specified duration and seed."""
     backend = MetaMusicBackend()
@@ -172,7 +172,7 @@ def test_meta_musicgen_with_duration_and_seed():
     except (RuntimeError, IOError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")
 
-@pytest.mark.live
+@pytest.mark.costly
 def test_meta_backend():
     """Test the Meta MusicGen backend for instrumental music generation."""
     config = load_input("tests/integration/test_data/minimal_ttv_config.json")
@@ -210,7 +210,7 @@ def test_meta_backend():
     return verify_duration("A short peaceful piano melody. High quality recording.", 7)
 
 @pytest.mark.costly
-@pytest.mark.live
+@pytest.mark.costly
 def test_meta_backend_longer_durations():
     """Test the Meta MusicGen backend with a 25 second duration (maximum single generation length)."""
     config = load_input("tests/integration/test_data/minimal_ttv_config.json")
@@ -248,7 +248,7 @@ def test_meta_backend_longer_durations():
     return verify_duration("An evolving ambient soundscape with gentle pads and subtle rhythms.", 25)
 
 @pytest.mark.costly
-@pytest.mark.live
+@pytest.mark.costly
 def test_meta_backend_looping():
     """Test the Meta MusicGen backend with a 3 minute duration that requires looping."""
     config = load_input("tests/integration/test_data/minimal_ttv_config.json")

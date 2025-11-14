@@ -28,7 +28,7 @@ def check_service_available():
     except:
         return False
 
-@pytest.mark.live
+@pytest.mark.costly
 def test_generate_instrumental():
     """Test generating an instrumental song."""
     if not check_service_available():
@@ -78,7 +78,7 @@ def test_generate_instrumental():
 
     return audio_path
 
-@pytest.mark.live
+@pytest.mark.costly
 def test_generate_with_lyrics():
     """Test generating a song with lyrics."""
     if not check_service_available():

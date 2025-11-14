@@ -35,6 +35,7 @@ def count_line_syllables(line):
     words = line.replace(',', ' ').replace('-', ' ').split()
     return sum(count_syllables(word) for word in words)
 
+@pytest.mark.costly
 def test_generate_lyrics():
     api_key = os.getenv('OPENAI_API_KEY')
     if not api_key:
