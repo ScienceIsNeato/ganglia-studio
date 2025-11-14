@@ -385,8 +385,11 @@ def test_output_path_copy_failure():
         # Result should fall back to the source path since copy failed
         assert result == "/mock/source/path.mp3"
 
-def test_backend_initialization_from_config():
+def test_backend_initialization_from_config(monkeypatch):
     """Test that backends are correctly initialized from config."""
+    # Mock API key environment variable for FoxAI backend
+    monkeypatch.setenv("FOXAI_SUNO_API_KEY", "test-key")
+    
     # Test Meta backend initialization
     config_meta = TTVConfig(
         style="test",
