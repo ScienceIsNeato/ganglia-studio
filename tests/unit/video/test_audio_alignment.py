@@ -33,6 +33,7 @@ def test_word_alignment():
             os.remove(audio_path)
 
 
+@pytest.mark.slow
 def test_caption_generation_from_audio():
     # Create test audio using TTS
     tts = GoogleTTS()
