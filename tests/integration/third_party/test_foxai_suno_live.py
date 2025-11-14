@@ -9,7 +9,7 @@ import os
 import time
 import pytest
 import requests
-from music_backends.foxai_suno import FoxAISunoBackend
+from ganglia_studio.music.backends.foxai_suno import FoxAISunoBackend
 from tests.test_helpers import play_media
 
 class MockQueryDispatcher:

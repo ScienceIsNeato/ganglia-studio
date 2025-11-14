@@ -3,7 +3,7 @@ import os
 import pytest
 
 from ganglia_studio.music.lyrics_lib import LyricsGenerator
-from query_dispatch import ChatGPTQueryDispatcher
+from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
 from ganglia_common.logger import Logger
 from ganglia_common.utils.file_utils import get_config_path
 

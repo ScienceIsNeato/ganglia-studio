@@ -28,7 +28,8 @@ from tests.test_helpers import (
     validate_caption_accuracy,
     get_output_dir_from_logs
 )
-from ganglia_studio.social_media.youtube_client import YouTubeClient
+# Note: social_media module not yet migrated to ganglia-studio
+# from ganglia_studio.social_media.youtube_client import YouTubeClient
 
 logger = logging.getLogger(__name__)
 

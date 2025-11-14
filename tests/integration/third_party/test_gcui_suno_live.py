@@ -9,7 +9,7 @@ import os
 import time
 import pytest
 from tests.test_helpers import play_media
-from music_backends.gcui_suno import GcuiSunoBackend
+from ganglia_studio.music.backends.gcui_suno import GcuiSunoBackend
 
 @pytest.mark.live
 def test_generate_instrumental():

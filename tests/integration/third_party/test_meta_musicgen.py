@@ -18,9 +18,9 @@ import time
 import pytest
 
 # Local imports
-from music_lib import MusicGenerator
-from ttv.config_loader import load_input
-from music_backends.meta import MetaMusicBackend
+from ganglia_studio.music.music_lib import MusicGenerator
+from ganglia_studio.video.config_loader import load_input
+from ganglia_studio.music.backends.meta import MetaMusicBackend
 
 def wait_for_spacebar():
     """Wait for spacebar press to continue."""
