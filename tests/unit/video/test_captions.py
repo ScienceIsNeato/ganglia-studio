@@ -32,8 +32,7 @@ from ganglia_studio.video.captions import (
 from ganglia_studio.video.color_utils import get_vibrant_palette
 from ganglia_studio.utils.ffmpeg_utils import run_ffmpeg_command
 from ganglia_studio.utils.video_utils import create_test_video
-# NOTE: test_helpers functions not yet migrated  
-# from tests.test_helpers import get_text_colors_from_video, play_media
+from tests.test_helpers import get_text_colors_from_video, play_media
 
 def get_default_font():
     """Get the default font path for testing."""
@@ -48,7 +47,6 @@ def get_default_font():
             return path
     return None
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_default_static_captions():
     """Test that static captions work with default settings."""
     # Create test video
@@ -84,7 +82,6 @@ def test_default_static_captions():
         if os.path.exists(output_path):
             os.unlink(output_path)
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_static_captions():
     """Test static caption generation"""
     # Create test video
@@ -124,7 +121,6 @@ def test_static_captions():
             os.unlink(output_path)
 
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_caption_text_completeness():
     """Test that all words from the original caption appear in the dynamic captions"""
     original_text = "This is a test caption with multiple words that should all appear in the output"
@@ -151,7 +147,6 @@ def test_caption_text_completeness():
     assert set(words) == set(processed_words), "Not all words from original caption are present in processed output"
 
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_font_size_and_variation():
     """Test that font sizes are properly scaled and varied based on video dimensions and word length"""
     # Create test video with specific dimensions
@@ -198,7 +193,6 @@ def test_font_size_and_variation():
             os.unlink(output_path)
 
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_caption_positioning():
     """Test that captions stay within the safe viewing area"""
     # Create test video with specific dimensions
@@ -251,7 +245,6 @@ def test_caption_positioning():
             os.unlink(output_path)
 
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_create_srt_captions():
     """Test SRT caption file creation."""
     # Create test captions
@@ -282,7 +275,6 @@ def test_create_srt_captions():
             os.unlink(srt_path)
 
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_audio_aligned_captions():
     """Test creation of a video with audio-aligned captions"""
     # Generate audio using Google TTS first to get its duration
@@ -391,7 +383,6 @@ def test_audio_aligned_captions():
             os.remove(audio_path)
 
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_text_wrapping():
     """Test that text wrapping handles long text properly"""
     # Create test video
@@ -436,7 +427,6 @@ def test_text_wrapping():
             os.unlink(output_path)
 
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_text_rendering_features():
     """Test various text rendering features including emoji handling"""
     # Create test video
@@ -481,7 +471,6 @@ def test_text_rendering_features():
             os.unlink(output_path)
 
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_vibrant_color_palette():
     """Test that the vibrant color palette generates appropriate colors for different backgrounds"""
     # Create test video
@@ -551,7 +540,6 @@ def test_vibrant_color_palette():
             os.unlink(output_path)
 
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_no_word_overlap():
     """Test that words in captions do not overlap each other"""
     # Create test video
@@ -636,7 +624,6 @@ def test_no_word_overlap():
             os.unlink(output_path)
 
 
-@pytest.mark.skip(reason="Caption tests are slow and not touched by current work")
 def test_deterministic_color_selection():
     """Test that color selection is deterministic based on background color."""
     # Create test videos with different background colors
