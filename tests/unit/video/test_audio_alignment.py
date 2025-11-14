@@ -9,6 +9,7 @@ from ganglia_studio.video.audio_alignment import align_words_with_audio, create_
 import ganglia_studio.video.audio_alignment
 
 
+@pytest.mark.slow
 def test_word_alignment():
     # Create test audio using TTS
     tts = GoogleTTS()
@@ -151,6 +152,7 @@ def _test_alignment_with_model(model_size: str) -> tuple[set[str], set[str]]:
             os.remove(audio_path)
 
 
+@pytest.mark.slow
 def test_complex_phrase_alignment():
     """Test word-level alignment for complex phrases.
 
