@@ -153,7 +153,7 @@ class StoryGenerationDriver:
         if event.target != self.user_id:
             return
 
-        info_type = event.data.get("info_type")
+        _info_type = event.data.get("info_type")
         user_response = event.data.get("user_response", "")
         is_valid = event.data.get("is_valid", False)
 

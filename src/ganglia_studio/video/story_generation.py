@@ -40,22 +40,6 @@ def generate_filtered_story(context, style, story_title, query_dispatcher):
     """
     Logger.print_info("Generating filtered story with ChatGPT.")
 
-    prompt = (
-        f"You are a content filter that ensures text will pass OpenAI's content filters for DALL-E 3 image generation.\n\n"
-        f"Filter and rewrite the following text to ensure it will pass content filters. The story should be titled '{story_title}' with the style of {style}. Here is the context to filter:\n\n"
-        f"{context}\n\n"
-        "Requirements:\n"
-        "1. Make the story appropriate for all audiences\n"
-        "2. Remove any sensitive or inappropriate content\n"
-        "3. Rewrite sections with PII to only include publicly available information\n\n"
-        "IMPORTANT: Return ONLY a JSON object in this exact format with no other text before or after:\n"
-        "{\n"
-        '  "style": "<insert style here>",\n'
-        '  "title": "<insert title here>",\n'
-        '  "story": "<insert filtered story here>"\n'
-        "}"
-    )
-
     try:
         # First filter the content using the base DALL-E filter
         success, filtered_content = query_dispatcher.filter_content_for_dalle(context)

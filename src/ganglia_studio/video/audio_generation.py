@@ -47,6 +47,7 @@ def generate_audio(
                 "voice": {"languageCode": language_code, "name": voice},
                 "audioConfig": {"audioEncoding": "LINEAR16", "pitch": 0, "speakingRate": 1.0},
             },
+            timeout=30,
         )
 
         if response.status_code != 200:

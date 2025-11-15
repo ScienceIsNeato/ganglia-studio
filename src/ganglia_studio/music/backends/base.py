@@ -29,7 +29,6 @@ class MusicBackend(ABC):
         Returns:
             str: Path to the generated audio file.
         """
-        pass
 
     @abstractmethod
     def generate_with_lyrics(
@@ -56,7 +55,6 @@ class MusicBackend(ABC):
         Returns:
             tuple[str, str]: Tuple containing (audio_file_path, lyrics) or (None, None) if generation fails
         """
-        pass
 
     @abstractmethod
     def start_generation(
@@ -87,7 +85,6 @@ class MusicBackend(ABC):
         Returns:
             str: Job ID for tracking progress, or None if generation fails
         """
-        pass
 
     @abstractmethod
     def check_progress(self, job_id: str) -> tuple[str, float]:
@@ -99,7 +96,6 @@ class MusicBackend(ABC):
         Returns:
             tuple[str, float]: Status message and progress percentage (0-100)
         """
-        pass
 
     @abstractmethod
     def get_result(self, job_id: str) -> str:
@@ -111,7 +107,6 @@ class MusicBackend(ABC):
         Returns:
             str: Path to the generated audio file, or None if failed
         """
-        pass
 
     def wait_for_completion(self, job_id: str, timeout: int = 300, interval: int = 5) -> str:
         """Wait for a generation job to complete.

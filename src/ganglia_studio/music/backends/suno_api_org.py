@@ -32,6 +32,9 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
 
     def _make_api_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
         """Make an API request with retries."""
+        # Set default timeout if not provided
+        if 'timeout' not in kwargs:
+            kwargs['timeout'] = 30
 
         def _request():
             response = requests.request(method, endpoint, **kwargs)
@@ -211,7 +214,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
 
                 params = json.loads(param_str)
                 title = params.get("title", "Untitled")
-            except:
+            except (json.JSONDecodeError, KeyError, TypeError):
                 title = "Untitled"
 
             # Calculate elapsed time and progress
@@ -380,7 +383,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             return None, None
 
         while True:
-            status, progress = self.check_progress(job_id)
+            _status, progress = self.check_progress(job_id)
             if progress >= 100:
                 result = self.get_result(job_id)
                 return result, story_text if result else (None, None)
@@ -398,7 +401,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             audio_path = os.path.join(self.audio_directory, f"suno_{job_id}_{timestamp}.mp3")
 
-            total_size = int(response.headers.get("content-length", 0))
+            _total_size = int(response.headers.get("content-length", 0))
             bytes_written = 0
 
             with open(audio_path, "wb") as f:

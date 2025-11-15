@@ -28,11 +28,9 @@ def parse_tts_interface(tts_interface: str, apply_effects: bool = False) -> Text
     """
     if tts_interface.lower() == "google":
         return GoogleTTS(apply_effects=apply_effects)
-    elif tts_interface.lower() == "openai":
+    if tts_interface.lower() == "openai":
         return OpenAITTS(voice="onyx")  # Deep voice similar to GANGLIA's personality
-    else:
-        raise ValueError(
-            f"Invalid TTS interface provided: '{tts_interface}'. "
-            "Available options: 'google', 'openai'"
-        )
-
+    raise ValueError(
+        f"Invalid TTS interface provided: '{tts_interface}'. "
+        "Available options: 'google', 'openai'"
+    )

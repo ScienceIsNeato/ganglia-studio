@@ -351,7 +351,7 @@ class MusicGenerator:
                 "default=noprint_wrappers=1:nokey=1",
                 file_path,
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             if result.returncode != 0 or "audio" not in result.stdout:
                 Logger.print_error(f"{thread_prefix}File is not a valid audio file: {file_path}")
                 return False

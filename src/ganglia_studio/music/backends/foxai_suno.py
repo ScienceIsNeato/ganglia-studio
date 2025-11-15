@@ -72,7 +72,7 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
         endpoint = f"{self.api_base_url}/gateway/query?ids={job_id}"
 
         try:
-            response = requests.get(endpoint, headers=self.headers)
+            response = requests.get(endpoint, headers=self.headers, timeout=30)
             if response.status_code != 200:
                 return f"Error: HTTP {response.status_code}", 0
 
@@ -112,7 +112,7 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
         endpoint = f"{self.api_base_url}/gateway/query?ids={job_id}"
 
         try:
-            response = requests.get(endpoint, headers=self.headers)
+            response = requests.get(endpoint, headers=self.headers, timeout=30)
             if response.status_code != 200:
                 return None
 
@@ -179,7 +179,7 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
         Logger.print_info(
             f"Sending request to {endpoint} with data: {data} and headers: {logging_headers}"
         )
-        response = requests.post(endpoint, headers=self.headers, json=data)
+        response = requests.post(endpoint, headers=self.headers, json=data, timeout=30)
         Logger.print_info(f"Request completed with status code {response.status_code}")
 
         if response.status_code != 200:
@@ -273,7 +273,7 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
                 f"Sending request to {endpoint} with data: {data} and headers: {logging_headers}"
             )
 
-            response = requests.post(endpoint, headers=self.headers, json=data)
+            response = requests.post(endpoint, headers=self.headers, json=data, timeout=30)
             if response.status_code != 200:
                 try:
                     error_detail = response.json()
@@ -310,7 +310,7 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
     def _download_audio(self, audio_url, job_id):
         """Download the generated audio file."""
         try:
-            response = requests.get(audio_url)
+            response = requests.get(audio_url, timeout=30)
             if response.status_code != 200:
                 return None
 
@@ -329,16 +329,16 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
     def _save_start_time(self, job_id):
         """Save the start time of a job for progress estimation."""
         path = os.path.join(self.audio_directory, f"{job_id}_start_time")
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(str(time.time()))
 
     def _get_start_time(self, job_id):
         """Get the start time of a job for progress estimation."""
         try:
             path = os.path.join(self.audio_directory, f"{job_id}_start_time")
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 return float(f.read().strip())
-        except:
+        except (FileNotFoundError, ValueError, OSError):
             return time.time()
 
     def generate_instrumental(
@@ -443,7 +443,7 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
             return None, None
 
         while True:
-            status, progress = self.check_progress(job_id)
+            _status, progress = self.check_progress(job_id)
             if progress >= 100:
                 result = self.get_result(job_id)
                 return result, lyrics if result else (None, None)
