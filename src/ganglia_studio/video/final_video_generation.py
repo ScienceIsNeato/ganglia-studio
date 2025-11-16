@@ -53,24 +53,27 @@ def read_file_contents(file_path: str, encoding: str = "utf-8") -> str | None:
         return None
 
 
-def _upload_to_test_outputs(local_file_path: str) -> bool:
-    """Upload a file to the test outputs directory in GCS.
+def _upload_final_video(local_file_path: str) -> bool:
+    """Upload the final video to cloud storage when enabled."""
+    upload_enabled = os.getenv("ENABLE_FINAL_VIDEO_UPLOADS", "false").lower() == "true"
+    if not upload_enabled:
+        Logger.print_info(
+            "Skipping final video upload; set ENABLE_FINAL_VIDEO_UPLOADS=true to enable."
+        )
+        return False
 
-    Args:
-        local_file_path: Path to the local file to upload
-
-    Returns:
-        bool: True if upload was successful, False otherwise
-    """
-    bucket_name = "ganglia-public-test-results"  # Use our new public bucket
+    bucket_name = os.getenv("FINAL_VIDEO_BUCKET", "ganglia-public-test-results")
     project_name = os.getenv("GCP_PROJECT_NAME")
     service_account_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
     if not (project_name and service_account_path):
+        Logger.print_warning(
+            "Missing GCP credentials; cannot upload final video even though uploads are enabled."
+        )
         return False
 
     timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    gcs_path = f"test_outputs/{timestamp}_final_video.mp4"
+    gcs_path = f"final_videos/{timestamp}_final_video.mp4"
 
     success = upload_to_gcs(
         local_file_path=local_file_path,
@@ -137,7 +140,8 @@ def concatenate_video_segments(
                     "copy",
                     # Normalize audio to consistent format
                     "-af",
-                    f"aformat=sample_fmts=fltp:sample_rates={AUDIO_SAMPLE_RATE}:channel_layouts=stereo",
+                    f"aformat=sample_fmts=fltp:sample_rates={AUDIO_SAMPLE_RATE}:"
+                    "channel_layouts=stereo",
                 ]
                 + AUDIO_ENCODING_ARGS
                 + [output_path]
@@ -188,8 +192,10 @@ def add_background_music(
             f"[0:a]aresample={AUDIO_SAMPLE_RATE},aformat=sample_fmts=fltp[mono];"
             "[mono]pan=stereo|c0=c0|c1=c0[v];"
             # Process background music
-            f"[1:a]aresample={AUDIO_SAMPLE_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,volume={music_volume}[m];"
-            # Mix the streams - use duration=first to prevent background music from extending video duration
+            f"[1:a]aresample={AUDIO_SAMPLE_RATE},aformat=sample_fmts=fltp:"
+            f"channel_layouts=stereo,volume={music_volume}[m];"
+            # Mix the streams - use duration=first to prevent background music from
+            # extending video duration
             "[v][m]amix=inputs=2:duration=first:dropout_transition=2[aout]"
         )
 
@@ -327,9 +333,8 @@ def assemble_final_video(
         else:
             Logger.print_error("Failed to rename final video")
 
-        # Upload the final video to GCS test outputs
-        #  TODO: This shouldn't be specific to test outputs
-        _upload_to_test_outputs(final_output_path)
+        # Optionally upload the final video to GCS if enabled
+        _upload_final_video(final_output_path)
 
         Logger.print_info(LOG_FINAL_VIDEO_PATH.format(final_output_path))
         play_video(final_output_path)

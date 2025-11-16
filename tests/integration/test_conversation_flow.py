@@ -222,11 +222,19 @@ def mock_generate_image(prompt, output_path, style=None, skip_generation=False):
 
 
 # Mock function for text_to_video
-def mock_text_to_video(config_path, skip_generation=False, tts=None, query_dispatcher=None):
+def mock_text_to_video(
+    config_path,
+    output_dir=None,
+    *,
+    skip_generation=False,
+    tts=None,
+    query_dispatcher=None,
+):
     """Mock function for text_to_video that returns a predefined video path.
 
     Args:
         config_path: The path to the config file
+        output_dir: Optional directory for generated assets
         skip_generation: Whether to skip generation
         tts: The TTS interface to use
         query_dispatcher: The query dispatcher to use
@@ -234,8 +242,8 @@ def mock_text_to_video(config_path, skip_generation=False, tts=None, query_dispa
     Returns:
         The path to the generated video
     """
-    # Create a timestamped directory for this run
-    ttv_dir = get_tempdir()
+    # Create a directory for this run
+    ttv_dir = output_dir or get_tempdir()
     os.makedirs(ttv_dir, exist_ok=True)
 
     # Create a mock video file

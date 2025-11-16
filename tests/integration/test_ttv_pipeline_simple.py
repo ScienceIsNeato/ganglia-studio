@@ -6,17 +6,18 @@ structure without actually generating images or music.
 """
 
 import os
-import pytest
 import tempfile
+
+import pytest
+
 from ganglia_common.utils.file_utils import get_tempdir
-from ganglia_common.tts.google_tts import GoogleTTS
 from ganglia_studio.video.ttv import text_to_video
 from tests.helpers import (
     create_test_config,
-    validate_video_file,
-    validate_segment_files,
     find_final_video,
-    load_config
+    load_config,
+    validate_segment_files,
+    validate_video_file,
 )
 
 

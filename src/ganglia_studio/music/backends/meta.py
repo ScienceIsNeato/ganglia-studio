@@ -226,7 +226,10 @@ class MetaMusicBackend(MusicBackend):
                     fade_str = (
                         f"[0:a][1:a]acrossfade=d={crossfade_duration}:c1=tri:c2=tri[f1];"
                         if i == 0
-                        else f"[f{i}][{i + 1}:a]acrossfade=d={crossfade_duration}:c1=tri:c2=tri[f{i + 1}];"
+                        else (
+                            f"[f{i}][{i + 1}:a]acrossfade=d={crossfade_duration}:c1=tri:c2=tri"
+                            f"[f{i + 1}];"
+                        )
                     )
                     filter_complex.append(fade_str)
 

@@ -1,5 +1,6 @@
 """SunoApi.org implementation for music generation."""
 
+import json
 import os
 import time
 from datetime import datetime
@@ -210,8 +211,6 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             # Get title for status message
             param_str = generation_data.get("param", "{}")
             try:
-                import json
-
                 params = json.loads(param_str)
                 title = params.get("title", "Untitled")
             except (json.JSONDecodeError, KeyError, TypeError):

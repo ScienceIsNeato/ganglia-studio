@@ -37,7 +37,10 @@ def get_default_font() -> str:
         "DejaVu Sans font not found. You have two options:\n"
         "1. Run tests in Docker (recommended)\n"
         "2. Install DejaVu Sans font on your system:\n"
-        "   - macOS: curl -L https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 | tar xj && sudo cp dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf /Library/Fonts/ && rm -rf dejavu-fonts-ttf-2.37\n"
+        "   - macOS: curl -L https://github.com/dejavu-fonts/dejavu-fonts/"
+        "releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 |\n"
+        "           tar xj && sudo cp dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf "
+        "           /Library/Fonts/ && rm -rf dejavu-fonts-ttf-2.37\n"
         "   - Linux: sudo apt-get install fonts-dejavu-core\n"
     )
 
@@ -556,7 +559,8 @@ def _process_caption_window(
     stroke_color = tuple(c // 3 for c in text_color)
 
     Logger.print_info(
-        f"Using color {text_color} for window (background: {avg_bg_color}, complement: {complement})"
+        f"Using color {text_color} for window (background: {avg_bg_color}, "
+        f"complement: {complement})"
     )
 
     # Process all words in the window
@@ -810,6 +814,16 @@ def create_static_captions(
         if not dimensions:
             raise ValueError("Could not determine video dimensions")
 
+        try:
+            dimension_output = dimensions.stdout.decode("utf-8").strip()
+            video_width, _ = [int(value) for value in dimension_output.split(",")]
+        except (AttributeError, ValueError):
+            raise ValueError("Unable to parse video dimensions") from None
+
+        available_width = max(video_width - (2 * margin), int(video_width * 0.6))
+        average_char_width = max(font_size * 0.6, 1)
+        max_chars_per_line = max(int(available_width / average_char_width), 12)
+
         # Build drawtext filters for each caption
         drawtext_filters = []
         for caption in captions:
@@ -819,8 +833,12 @@ def create_static_captions(
             else:
                 y_position = "(h-th)/2"  # Center vertically
 
-            # Escape special characters in text
-            escaped_text = caption.text.replace("'", "\\'")
+            # Wrap and escape text to keep it within safe bounds
+            wrapped_lines = textwrap.wrap(caption.text, width=max_chars_per_line)
+            if not wrapped_lines:
+                wrapped_lines = [caption.text]
+
+            escaped_text = '\n'.join(line.replace("'", "\'") for line in wrapped_lines)
 
             filter_text = (
                 f"drawtext=text='{escaped_text}'"
@@ -917,6 +935,3 @@ def create_static_captions(
             except Exception as exception:
                 Logger.print_error(f"Error cleaning up temporary file {temp_file}: {exception}")
 
-    # TODO: Fix bug where long static captions overflow the screen width.
-    #       Need to implement text wrapping for static captions similar to dynamic captions
-    #       to ensure text stays within safe viewing area.

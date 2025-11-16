@@ -26,10 +26,13 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
             try:
                 response = requests.get(f"{self.api_base_url}/api/get_limit", timeout=10)
                 if response.status_code != 200:
-                    raise ConnectionError(f"Failed to connect to Suno API: {response.status_code}")
+                    raise ConnectionError(
+                        f"Failed to connect to Suno API: {response.status_code}"
+                    )
                 quota_info = response.json()
                 Logger.print_info(
-                    f"Connected to Suno API. Credits remaining: {quota_info.get('credits_left', 'unknown')}"
+                    "Connected to Suno API. Credits remaining: "
+                    f"{quota_info.get(credits_left, unknown)}"
                 )
             except Exception as e:
                 Logger.print_error(f"Failed to initialize Suno API connection: {str(e)}")
@@ -58,7 +61,8 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
             wait_audio: Whether to wait for audio generation
             query_dispatcher: Query dispatcher for lyric generation
             model: Model to use for generation
-            duration: Duration in seconds (default: 30 for instrumental, DEFAULT_CREDITS_DURATION for lyrics)
+            duration: Duration in seconds (default: 30 for instrumental,
+                DEFAULT_CREDITS_DURATION for lyrics)
 
         Returns:
             str: Job ID for tracking progress, or None if generation fails
@@ -309,7 +313,8 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
             duration: Duration in seconds (default: DEFAULT_CREDITS_DURATION)
 
         Returns:
-            tuple[str, str]: Tuple containing (audio_file_path, lyrics) or (None, None) if generation fails
+            tuple[str, str]: Tuple containing (audio_file_path, lyrics) or
+            (None, None) if generation fails
         """
         job_id = self.start_generation(
             prompt=prompt,

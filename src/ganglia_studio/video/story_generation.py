@@ -49,14 +49,18 @@ def generate_filtered_story(context, style, story_title, query_dispatcher):
 
         # Then format it into the required JSON structure
         response = query_dispatcher.send_query(
-            f"Format this filtered story into a JSON object with the style '{style}' and title '{story_title}':\n\n"
-            f"{filtered_content}\n\n"
-            "IMPORTANT: Return ONLY a JSON object in this exact format with no other text before or after:\n"
-            "{\n"
-            '  "style": "<insert style here>",\n'
-            '  "title": "<insert title here>",\n'
-            '  "story": "<insert filtered story here>"\n'
-            "}"
+            (
+                "Format this filtered story into a JSON object with the style "
+                f"'{style}' and title '{story_title}':\n\n"
+                f"{filtered_content}\n\n"
+                "IMPORTANT: Return ONLY a JSON object in this exact format "
+                "with no other text before or after:\n"
+                "{\n"
+                '  "style": "<insert style here>",\n'
+                '  "title": "<insert title here>",\n'
+                '  "story": "<insert filtered story here>"\n'
+                "}"
+            )
         )
 
         # Parse the response to extract the filtered story
@@ -103,7 +107,10 @@ def generate_movie_poster(
         Logger.print_error(f"{thread_prefix}Filtered story does not contain a story")
         return None
 
-    prompt = f"Create a movie poster for the story titled '{story_title}' with the style of {style} and context: {filtered_context}."
+    prompt = (
+        "Create a movie poster for the story titled "
+        f"'{story_title}' with the style of {style} and context: {filtered_context}."
+    )
     safety_retries = 3
 
     for safety_attempt in range(safety_retries):
@@ -127,19 +134,25 @@ def generate_movie_poster(
             except Exception as e:
                 if "Rate limit exceeded" in str(e):
                     Logger.print_warning(
-                        f"{thread_prefix}Rate limit exceeded. Retrying in {wait_time} seconds... (Attempt {attempt + 1} of {retries})"
+                        f"{thread_prefix}Rate limit exceeded. Retrying in {wait_time} seconds... "
+                        f"(Attempt {attempt + 1} of {retries})"
                     )
                     time.sleep(wait_time)
                 elif "safety system" in str(e).lower():
                     # If we hit a safety rejection, try to filter the content further
                     Logger.print_warning(
-                        f"{thread_prefix}Safety system rejection. Attempting to filter content (Attempt {safety_attempt + 1} of {safety_retries})"
+                        f"{thread_prefix}Safety system rejection. Attempting to filter content "
+                        f"(Attempt {safety_attempt + 1} of {safety_retries})"
                     )
                     success, filtered_context = query_dispatcher.filter_content_for_dalle(
                         filtered_context
                     )
                     if success:
-                        prompt = f"Create a movie poster for the story titled '{story_title}' with the style of {style} and context: {filtered_context}."
+                        prompt = (
+                            "Create a movie poster for the story titled "
+                            f"'{story_title}' with the style of {style} and context: "
+                            f"{filtered_context}."
+                        )
                         break  # Break the inner loop to try again with filtered content
                     else:
                         Logger.print_error(f"{thread_prefix}Failed to filter content")
@@ -156,7 +169,8 @@ def generate_movie_poster(
         continue
 
     Logger.print_error(
-        f"{thread_prefix}Failed to generate movie poster after {safety_retries} safety filtering attempts."
+        f"{thread_prefix}Failed to generate movie poster after {safety_retries} "
+        "safety filtering attempts."
     )
     return None
 

@@ -26,7 +26,6 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
 
     def start_generation(
         self,
-        prompt: str,
         with_lyrics: bool = False,
         title: str = None,
         tags: str = None,
@@ -47,14 +46,14 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
             wait_audio: Whether to wait for audio generation
             query_dispatcher: Query dispatcher for lyric generation
             model: Model to use for generation (chirp-v3-5 or chirp-v4)
-            duration: Duration in seconds (default: 30 for instrumental, DEFAULT_CREDITS_DURATION for lyrics)
+            duration: Duration in seconds (default: 30 for instrumental,
+                DEFAULT_CREDITS_DURATION for lyrics)
 
         Returns:
             str: Job ID for tracking progress, or None if generation fails
         """
         if with_lyrics and story_text:
             return self._start_lyrical_song_job(
-                prompt=prompt,
                 model=model,
                 story_text=story_text,
                 query_dispatcher=query_dispatcher,
@@ -186,7 +185,8 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
             try:
                 error_detail = response.json()
                 Logger.print_error(
-                    f"Failed to start instrumental music job. Status: {response.status_code}, Response: {error_detail}"
+                    "Failed to start instrumental music job. "
+                    f"Status: {response.status_code}, Response: {error_detail}"
                 )
                 if "detail" in error_detail:
                     Logger.print_error(f"Error detail: {error_detail['detail']}")
@@ -194,7 +194,8 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
                     Logger.print_error(f"Error message: {error_detail['message']}")
             except json.JSONDecodeError:
                 Logger.print_error(
-                    f"Failed to start instrumental music job. Status: {response.status_code}, Raw response: {response.text}"
+                    "Failed to start instrumental music job. "
+                    f"Status: {response.status_code}, Raw response: {response.text}"
                 )
             return None
 
@@ -213,7 +214,6 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
 
     def _start_lyrical_song_job(
         self,
-        prompt: str,
         model: str,
         story_text: str,
         query_dispatcher,
@@ -278,7 +278,8 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
                 try:
                     error_detail = response.json()
                     Logger.print_error(
-                        f"Failed to start lyrical music job. Status: {response.status_code}, Response: {error_detail}"
+                        "Failed to start lyrical music job. "
+                        f"Status: {response.status_code}, Response: {error_detail}"
                     )
                     if "detail" in error_detail:
                         Logger.print_error(f"Error detail: {error_detail['detail']}")
@@ -286,7 +287,8 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
                         Logger.print_error(f"Error message: {error_detail['message']}")
                 except json.JSONDecodeError:
                     Logger.print_error(
-                        f"Failed to start lyrical music job. Status: {response.status_code}, Raw response: {response.text}"
+                        "Failed to start lyrical music job. "
+                        f"Status: {response.status_code}, Raw response: {response.text}"
                     )
                 return None
 
@@ -416,7 +418,8 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
             duration: Duration in seconds (default: DEFAULT_CREDITS_DURATION)
 
         Returns:
-            tuple[str, str]: Tuple containing (audio_file_path, lyrics) or (None, None) if generation fails
+            tuple[str, str]: Tuple containing (audio_file_path, lyrics) or
+            (None, None) if generation fails
         """
         job_id = self.start_generation(
             prompt=prompt,

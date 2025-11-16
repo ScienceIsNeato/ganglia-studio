@@ -19,7 +19,13 @@ import logging
 from collections import Counter
 import cv2
 import numpy as np
-from google.cloud import storage
+try:
+    from google.cloud import storage
+except ModuleNotFoundError as exc:  # pragma: no cover
+    raise ImportError(
+        "google-cloud-storage is required for integration tests. "
+        "Install it with `pip install google-cloud-storage` before running the suite."
+    ) from exc
 from ganglia_common.logger import Logger
 from ganglia_studio.video.color_utils import get_vibrant_palette
 from ganglia_studio.video.log_messages import (

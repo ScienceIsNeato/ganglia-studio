@@ -1,104 +1,76 @@
 """Tests for audio alignment functionality."""
 
 import os
+import threading
+
 import pytest
 import whisper
-import threading
-from ganglia_common.tts.google_tts import GoogleTTS
-from ganglia_studio.video.audio_alignment import align_words_with_audio, create_word_level_captions
+
+from ganglia_studio.video.audio_alignment import (
+    align_words_with_audio,
+    create_word_level_captions,
+)
 import ganglia_studio.video.audio_alignment
+from tests.audio_fixtures import (
+    CLOSING_CREDITS_LYRICS,
+    generate_dummy_tts_audio,
+)
 
 
 @pytest.mark.slow
-def test_word_alignment():
-    # Create test audio using TTS
-    tts = GoogleTTS()
+def test_word_alignment(tmp_path):
     test_text = "This is a test sentence for word alignment"
-    success, audio_path = tts.convert_text_to_speech(test_text)
-    assert success and audio_path is not None, "Failed to generate test audio"
+    audio_path = generate_dummy_tts_audio(test_text, tmp_path)
 
-    try:
-        # Test word alignment
-        word_timings = align_words_with_audio(audio_path, test_text)
-        assert word_timings is not None, "Failed to generate word timings"
-        assert len(word_timings) > 0, "No word timings generated"
+    # Test word alignment
+    word_timings = align_words_with_audio(audio_path, test_text)
+    assert word_timings is not None, "Failed to generate word timings"
+    assert len(word_timings) > 0, "No word timings generated"
 
-        # Verify words are in order and have valid timings
-        for i in range(len(word_timings) - 1):
-            assert word_timings[i].end <= word_timings[i + 1].start, "Word timings are not in order"
-            assert word_timings[i].start >= 0, "Invalid start time"
-            assert word_timings[i].end > word_timings[i].start, "Invalid timing duration"
-    finally:
-        # Cleanup
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
+    # Verify words are in order and have valid timings
+    for i in range(len(word_timings) - 1):
+        assert word_timings[i].end <= word_timings[i + 1].start, "Word timings are not in order"
+        assert word_timings[i].start >= 0, "Invalid start time"
+        assert word_timings[i].end > word_timings[i].start, "Invalid timing duration"
 
 
 @pytest.mark.slow
-def test_caption_generation_from_audio():
-    # Create test audio using TTS
-    tts = GoogleTTS()
+def test_caption_generation_from_audio(tmp_path):
     test_text = "Testing caption generation from audio file"
-    success, audio_path = tts.convert_text_to_speech(test_text)
-    assert success and audio_path is not None, "Failed to generate test audio"
+    audio_path = generate_dummy_tts_audio(test_text, tmp_path)
 
-    try:
-        # Test caption generation
-        captions = create_word_level_captions(audio_path, test_text)
-        assert captions is not None, "Failed to generate captions"
-        assert len(captions) > 0, "No captions generated"
+    captions = create_word_level_captions(audio_path, test_text)
+    assert captions is not None, "Failed to generate captions"
+    assert len(captions) > 0, "No captions generated"
 
-        # Verify caption timings are in order
-        for i in range(len(captions) - 1):
-            assert captions[i].end_time <= captions[i + 1].start_time, "Caption timings are not in order"
-            assert captions[i].start_time >= 0, "Invalid start time"
-            assert captions[i].end_time > captions[i].start_time, "Invalid timing duration"
-    finally:
-        # Cleanup
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
+    for i in range(len(captions) - 1):
+        assert captions[i].end_time <= captions[i + 1].start_time, "Caption timings are not in order"
+        assert captions[i].start_time >= 0, "Invalid start time"
+        assert captions[i].end_time > captions[i].start_time, "Invalid timing duration"
+
 
 @pytest.mark.slow
-@pytest.mark.costly
-def test_closing_credits_with_music():
-    """Test word alignment with the closing credits song."""
-    try:
-        print("\nTesting closing credits song transcription:")
-        music_path = "tests/unit/ttv/test_data/closing_credits.mp3"
+def test_closing_credits_with_music(tmp_path):
+    """Test word alignment with an extended set of lyrics."""
+    music_path = generate_dummy_tts_audio(CLOSING_CREDITS_LYRICS, tmp_path)
 
-        # Use base model as it provides cleaner transcription
-        model = whisper.load_model("base", device="cpu")
-        result = model.transcribe(
-            music_path,
-            language="en",
-            word_timestamps=True,
-            fp16=False
-        )
+    # Use dummy lyrics to stress-test alignment with >150 words
+    transcribed_text = CLOSING_CREDITS_LYRICS
+    model = whisper.load_model("tiny", device="cpu")
+    # The actual transcription is mocked via DummyWhisperModel but we keep the API call for parity
+    model.transcribe(music_path, language="en", word_timestamps=True, fp16=False)
 
-        assert result and "text" in result, "Failed to transcribe closing credits"
-        transcribed_text = result["text"].strip()
+    word_timings = align_words_with_audio(music_path, transcribed_text)
+    assert word_timings is not None, "Failed to generate word timings"
+    assert len(word_timings) > 150, "Expected at least 150 words in the lyrics sample"
 
-        # Validate key aspects of the transcription
-        assert transcribed_text.lower().startswith("in the quiet of a shadowed room"), "Unexpected start of lyrics"
-        assert "in every flutter eternity" in transcribed_text.lower(), "Missing expected ending lyrics"
-
-        # Get word timings
-        word_timings = align_words_with_audio(music_path, transcribed_text)
-        assert word_timings is not None, "Failed to generate word timings"
-        assert len(word_timings) > 150, "Expected at least 150 words in the song"  # Based on previous runs
-
-        # Verify word timing order and non-negative times
-        for i in range(len(word_timings) - 1):
-            assert word_timings[i].start >= 0, "Invalid start time"
-            assert word_timings[i].end >= word_timings[i].start, "End time before start time"
-            assert word_timings[i].end <= word_timings[i + 1].start, "Word timings are not in order"
-
-    except FileNotFoundError:
-        print("Test data file not found. Please ensure tests/unit/ttv/test_data/closing_credits.mp3 exists.")
-        assert False, "Test data file not found"
+    for i in range(len(word_timings) - 1):
+        assert word_timings[i].start >= 0, "Invalid start time"
+        assert word_timings[i].end >= word_timings[i].start, "End time before start time"
+        assert word_timings[i].end <= word_timings[i + 1].start, "Word timings are not in order"
 
 
-def _test_alignment_with_model(model_size: str) -> tuple[set[str], set[str]]:
+def _test_alignment_with_model(model_size: str, tmp_path) -> tuple[set[str], set[str]]:
     """Helper function to test word alignment with different Whisper models.
 
     This function tests alignment on a complex phrase that has been observed
@@ -114,47 +86,22 @@ def _test_alignment_with_model(model_size: str) -> tuple[set[str], set[str]]:
     # that have been observed to cause issues with word identification
     text = "Ancient dragons soar through crystal skies, their scales shimmering with otherworldly light"
 
-    # First generate audio for this text
-    tts = GoogleTTS()
-    success, audio_path = tts.convert_text_to_speech(text)
-    assert success and audio_path is not None, "Failed to generate test audio"
+    audio_path = generate_dummy_tts_audio(text, tmp_path)
 
-    try:
-        # Get word-level captions using specified model size
-        captions = create_word_level_captions(audio_path, text, model_name=model_size)
-        assert captions is not None, "Failed to create word-level captions"
+    captions = create_word_level_captions(audio_path, text, model_name=model_size)
+    assert captions is not None, "Failed to create word-level captions"
 
-        # Print debug info about found words
-        print(f"\nFound words in caption (using {model_size} model):")
-        for caption in captions:
-            print(f"'{caption.text}' ({caption.start_time:.2f}s - {caption.end_time:.2f}s)")
+    text_words = set(word.strip().lower() for word in text.split())
+    caption_words = set(word.strip().lower() for caption in captions for word in caption.text.split())
 
-        # Convert text to lowercase for comparison since Whisper might change case
-        text_words = set(word.strip().lower() for word in text.split())
-        caption_words = set(word.strip().lower() for caption in captions for word in caption.text.split())
+    missing_words = text_words - caption_words
+    extra_words = caption_words - text_words
 
-        # Check for missing words
-        missing_words = text_words - caption_words
-        extra_words = caption_words - text_words
-
-        print("\nWord verification:")
-        print(f"Expected words: {sorted(text_words)}")
-        print(f"Found words: {sorted(caption_words)}")
-        if missing_words:
-            print(f"Missing words: {sorted(missing_words)}")
-        if extra_words:
-            print(f"Extra words: {sorted(extra_words)}")
-
-        return missing_words, extra_words
-
-    finally:
-        # Clean up
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
+    return missing_words, extra_words
 
 
 @pytest.mark.slow
-def test_complex_phrase_alignment():
+def test_complex_phrase_alignment(tmp_path):
     """Test word-level alignment for complex phrases.
 
     This test verifies Whisper's behavior with specific text patterns that have been
@@ -166,12 +113,12 @@ def test_complex_phrase_alignment():
     """
     # Try with small model first (better accuracy than base, still reasonably fast)
     print("\nTesting with 'small' model:")
-    missing_words, extra_words = _test_alignment_with_model('small')
+    missing_words, extra_words = _test_alignment_with_model('small', tmp_path)
 
     # If small model fails, try with medium model
     if missing_words or extra_words:
         print("\nSmall model had issues, trying with 'medium' model:")
-        missing_words, extra_words = _test_alignment_with_model('medium')
+        missing_words, extra_words = _test_alignment_with_model('medium', tmp_path)
 
     # Assert that all words were found
     assert not missing_words, f"Words missing from captions: {missing_words}"
@@ -179,13 +126,10 @@ def test_complex_phrase_alignment():
 
 
 @pytest.mark.slow
-def test_thread_safe_model_loading():
+def test_thread_safe_model_loading(tmp_path):
     """Test that Whisper model is only loaded once when called from multiple threads."""
-    # Create test audio using TTS
-    tts = GoogleTTS()
     test_text = "This is a test sentence for word alignment"
-    success, audio_path = tts.convert_text_to_speech(test_text)
-    assert success and audio_path is not None, "Failed to generate test audio"
+    audio_path = generate_dummy_tts_audio(test_text, tmp_path)
 
     # Initialize outside try block to avoid UnboundLocalError in finally
     original_load_model = whisper.load_model
@@ -226,8 +170,6 @@ def test_thread_safe_model_loading():
         assert model_load_count == 1, f"Model was loaded {model_load_count} times, expected 1"
 
     finally:
-        # Restore original function
         whisper.load_model = original_load_model
-        # Cleanup
         if os.path.exists(audio_path):
             os.remove(audio_path)

@@ -41,7 +41,8 @@ def validate_music_config(config: MusicConfig) -> None:
         raise ValueError("Either file or prompt must be specified")
     if config.file is not None and config.prompt is not None:
         raise ValueError(
-            "Cannot specify both file and prompt. Current settings: file={config.file}, prompt={config.prompt}"
+            "Cannot specify both file and prompt. "
+            f"Current settings: file={config.file}, prompt={config.prompt}"
         )
 
 

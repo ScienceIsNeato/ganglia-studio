@@ -261,7 +261,8 @@ def create_evenly_distributed_timings(audio_path: str, text: str) -> list[WordTi
             word_timings.append(WordTiming(text=word, start=start_time, end=end_time))
 
         Logger.print_info(
-            f"Created fallback evenly distributed timings for {len(words)} words over {total_duration:.2f}s"
+            f"Created fallback evenly distributed timings for {len(words)} words over "
+            f"{total_duration:.2f}s"
         )
         return word_timings
 
@@ -343,7 +344,8 @@ def create_word_level_captions(
         # If no words were found, fall back to evenly distributed
         if not words:
             Logger.print_warning(
-                f"{thread_prefix}No words found in Whisper output, falling back to even distribution"
+                f"{thread_prefix}No words found in Whisper output, "
+                "falling back to even distribution"
             )
             return create_evenly_distributed_captions(audio_file, text, thread_id)
 
@@ -425,7 +427,8 @@ def create_evenly_distributed_captions(
             captions.append(CaptionEntry(text=word, start_time=start_time, end_time=end_time))
 
         Logger.print_info(
-            f"{thread_prefix}Created evenly distributed captions for {len(words)} words over {total_duration:.2f}s"
+            f"{thread_prefix}Created evenly distributed captions for {len(words)} words over "
+            f"{total_duration:.2f}s"
         )
         return captions
 

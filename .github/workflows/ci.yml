@@ -81,12 +81,11 @@ jobs:
     - name: Run ruff (fast linter and formatter)
       run: |
         ruff check src/
-      continue-on-error: true
+
 
     - name: Run pylint
       run: |
         pylint src/ganglia_studio/ --disable=C0111,R0903,R0913,C0103,W0212,W0611,C0302,R0801
-      continue-on-error: true
 
   coverage:
     runs-on: ubuntu-latest

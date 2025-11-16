@@ -53,7 +53,8 @@ class MusicBackend(ABC):
             duration: Duration in seconds (default: DEFAULT_CREDITS_DURATION)
 
         Returns:
-            tuple[str, str]: Tuple containing (audio_file_path, lyrics) or (None, None) if generation fails
+            tuple[str, str]: Tuple containing (audio_file_path, lyrics) or
+            (None, None) if generation fails
         """
 
     @abstractmethod
@@ -80,7 +81,8 @@ class MusicBackend(ABC):
             wait_audio: Whether to wait for audio generation
             query_dispatcher: Query dispatcher for lyric generation
             model: Model to use for generation (default: chirp-v3-5)
-            duration: Duration in seconds (default: 30 for instrumental, DEFAULT_CREDITS_DURATION for lyrics)
+            duration: Duration in seconds (default: 30 for instrumental,
+                DEFAULT_CREDITS_DURATION for lyrics)
 
         Returns:
             str: Job ID for tracking progress, or None if generation fails

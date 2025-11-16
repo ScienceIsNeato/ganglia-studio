@@ -9,6 +9,7 @@ import json
 import os
 import threading
 import time
+import traceback
 
 from ganglia_common.logger import Logger
 from ganglia_common.pubsub import Event, EventType, get_pubsub
@@ -120,7 +121,12 @@ class StoryGenerationDriver:
                 event_type=EventType.STORY_INFO_NEEDED,
                 data={
                     "info_type": StoryInfoType.STORY_IDEA,
-                    "prompt": "If you tell me an interesting story, I can try to make a video. Give me some broad strokes and I can fill in the details. What do you have in mind for the protagonist? The conflict? The resolution?",
+                    "prompt": (
+                        "If you tell me an interesting story, I can try to make a video. "
+                        "Give me some broad strokes and I can fill in the details. "
+                        "What do you have in mind for the protagonist? The conflict? "
+                        "The resolution?"
+                    ),
                     "current_state": self.state,
                 },
                 source="story_generation_driver",
@@ -135,7 +141,10 @@ class StoryGenerationDriver:
                 event_type=EventType.STORY_INFO_NEEDED,
                 data={
                     "info_type": StoryInfoType.ARTISTIC_STYLE,
-                    "prompt": "What artistic style are you thinking for the visual components? What about music styles for the background music and closing credits?",
+                    "prompt": (
+                        "What artistic style are you thinking for the visual components? "
+                        "What about music styles for the background music and closing credits?"
+                    ),
                     "current_state": self.state,
                 },
                 source="story_generation_driver",
@@ -165,7 +174,10 @@ class StoryGenerationDriver:
                     event_type=EventType.STORY_INFO_NEEDED,
                     data={
                         "info_type": "cancelled",
-                        "prompt": "No problem! Let me know if you change your mind and want to create a video later.",
+                        "prompt": (
+                            "No problem! Let me know if you change your mind and want "
+                            "to create a video later."
+                        ),
                         "current_state": self.state,
                     },
                     source="story_generation_driver",
@@ -369,8 +381,6 @@ class StoryGenerationDriver:
             )
 
             Logger.print_error(f"Error in TTV process: {e}")
-            import traceback
-
             Logger.print_error(f"Traceback: {traceback.format_exc()}")
 
 

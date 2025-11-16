@@ -45,7 +45,8 @@ def process_sentence(
 ):
     """Process a single sentence into a video segment with audio and captions.
 
-    This function handles the complete pipeline for converting a single sentence into a video segment:
+    This function handles the complete pipeline for converting a single sentence
+    into a video segment:
     1. Generates or loads an image based on the sentence
     2. Generates audio narration for the sentence
     3. Creates a video segment combining the image and audio
@@ -65,7 +66,8 @@ def process_sentence(
 
     Returns:
         tuple: A tuple containing (video_path, index) where:
-            - video_path (str or None): Path to the generated video segment, or None if generation failed
+            - video_path (str or None): Path to the generated video segment, or
+              None if generation failed
             - index (int): The original sentence index
 
     Note:
@@ -304,16 +306,19 @@ def process_story(
                         movie_poster_path = future.result()
                         if movie_poster_path is None:
                             Logger.print_warning(
-                                f"{thread_prefix}Failed to generate movie poster, closing credits may be affected"
+                                f"{thread_prefix}Failed to generate movie poster, "
+                                "closing credits may be affected"
                             )
 
                     elif task_type == "background_music":
                         background_music_path = future.result()
                         if background_music_path is None:
                             Logger.print_warning(
-                                f"{thread_prefix}Background music generation failed - continuing without background music"
+                                f"{thread_prefix}Background music generation failed - "
+                                "continuing without background music"
                             )
-                            # Don't return None for everything, just continue without background music
+                            # Don't return None for everything;
+                            # just continue without background music
 
                     elif task_type == "closing_credits":
                         closing_credits_path, closing_credits_lyrics = future.result()
@@ -329,14 +334,16 @@ def process_story(
                             segment_indices.append(segment[1])
                         else:
                             Logger.print_error(
-                                f"{thread_prefix}Failed to process segment {segment[1] if segment else 'unknown'}"
+                                f"{thread_prefix}Failed to process segment "
+                                f"{segment[1] if segment else 'unknown'}"
                             )
 
                 except Exception as e:
                     Logger.print_error(f"{thread_prefix}Error processing task: {str(e)}")
                     if task_type == "background_music":  # Background music failure is not critical
                         Logger.print_warning(
-                            f"{thread_prefix}Background music generation failed with error - continuing without background music"
+                            f"{thread_prefix}Background music generation failed with error - "
+                            "continuing without background music"
                         )
                         background_music_path = None
                     continue
@@ -389,7 +396,8 @@ def retry_on_rate_limit(func, *args, retries=5, wait_time=60, **kwargs):
         except Exception as e:
             if "Rate limit exceeded" in str(e):
                 Logger.print_error(
-                    f"Rate limit exceeded. Retrying in {wait_time} seconds... (Attempt {attempt + 1} of {retries})"
+                    f"Rate limit exceeded. Retrying in {wait_time} seconds... "
+                    f"(Attempt {attempt + 1} of {retries})"
                 )
                 time.sleep(wait_time)
             else:

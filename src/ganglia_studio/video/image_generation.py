@@ -8,6 +8,7 @@ This module provides functionality for:
 """
 
 import os
+import shutil
 import textwrap
 import time
 from datetime import datetime
@@ -50,7 +51,13 @@ def generate_image(
         Tuple[Optional[str], bool]: Path to generated image and success flag
     """
     thread_prefix = f"{thread_id} " if thread_id else ""
-    Logger.print_info(f"{thread_prefix}Generating image for: '{sentence}' using style '{style}'")
+    progress = ""
+    if total_images:
+        progress = f" [{image_index + 1}/{total_images}]"
+    Logger.print_info(
+        f"{thread_prefix}Generating image for: '{sentence}' using style '{style}'"
+        f"{progress}"
+    )
 
     # Check for preloaded image
     if preloaded_images_dir:
@@ -139,8 +146,6 @@ def generate_blank_image(
         image = Image.new("RGB", (width, height), background_color)
 
         # Add text overlay
-        from PIL import ImageDraw, ImageFont
-
         draw = ImageDraw.Draw(image)
 
         try:
@@ -168,13 +173,15 @@ def generate_blank_image(
 
         image.save(filename)
         Logger.print_info(
-            f"{thread_id + ' ' if thread_id else ''}Generated blank image {image_index} at: {filename}"
+            f"{thread_id + ' ' if thread_id else ''}Generated blank image {image_index} at: "
+            f"{filename}"
         )
         return filename
 
     except OSError as e:
         Logger.print_error(
-            f"{thread_id + ' ' if thread_id else ''}Error generating blank image {image_index}: {str(e)}"
+            f"{thread_id + ' ' if thread_id else ''}Error generating blank image "
+            f"{image_index}: {str(e)}"
         )
         return None
 
@@ -372,11 +379,13 @@ def generate_image_with_dalle(
             if attempt < retries - 1:
                 if "Rate limit exceeded" in str(e):
                     Logger.print_warning(
-                        f"Rate limit exceeded. Retrying in {retry_delay} seconds... (Attempt {attempt + 1} of {retries})"
+                        f"Rate limit exceeded. Retrying in {retry_delay} seconds... "
+                        f"(Attempt {attempt + 1} of {retries})"
                     )
                 else:
                     Logger.print_warning(
-                        f"Image generation failed. Retrying in {retry_delay / 10} seconds... (Attempt {attempt + 1} of {retries})"
+                        f"Image generation failed. Retrying in {retry_delay / 10} seconds... "
+                        f"(Attempt {attempt + 1} of {retries})"
                     )
                     retry_delay = retry_delay / 10  # Use shorter delay for non-rate-limit errors
                 time.sleep(retry_delay)
@@ -453,8 +462,6 @@ def process_image_batch(
                     processed_paths.append(result)
             else:
                 # Just copy the image
-                import shutil
-
                 shutil.copy2(image_path, output_path)
                 processed_paths.append(output_path)
 

@@ -13,25 +13,29 @@ This module contains tests for caption generation functionality including:
 import os
 import tempfile
 import random
-import pytest
-import numpy as np
-from PIL import Image
+
 import cv2
+import numpy as np
+import pytest
+from PIL import Image
 
 from ganglia_common.logger import Logger
-from ganglia_common.tts.google_tts import GoogleTTS
 from ganglia_common.utils.file_utils import get_tempdir
 from ganglia_studio.video.audio_alignment import create_word_level_captions
 from ganglia_studio.video.captions import (
-    CaptionEntry, Word, create_caption_windows,
-    create_dynamic_captions, create_srt_captions,
-    create_static_captions,
+    CaptionEntry,
+    Word,
     calculate_word_positions,
-    split_into_words
+    create_caption_windows,
+    create_dynamic_captions,
+    create_srt_captions,
+    create_static_captions,
+    split_into_words,
 )
 from ganglia_studio.video.color_utils import get_vibrant_palette
 from ganglia_studio.utils.ffmpeg_utils import run_ffmpeg_command
 from ganglia_studio.utils.video_utils import create_test_video
+from tests.audio_fixtures import generate_dummy_tts_audio
 from tests.test_helpers import get_text_colors_from_video, play_media
 
 def get_default_font():
@@ -282,13 +286,11 @@ def test_create_srt_captions():
 
 
 @pytest.mark.slow
-def test_audio_aligned_captions():
+def test_audio_aligned_captions(tmp_path):
     """Test creation of a video with audio-aligned captions"""
     # Generate audio using Google TTS first to get its duration
     test_text = "This is a test video with synchronized audio and captions. The captions should match the spoken words exactly."
-    tts = GoogleTTS()
-    success, audio_path = tts.convert_text_to_speech(test_text)
-    assert success and audio_path is not None, "Failed to generate test audio"
+    audio_path = generate_dummy_tts_audio(test_text, tmp_path)
 
     try:
         # Verify the audio file exists and has content
