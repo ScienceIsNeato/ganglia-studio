@@ -159,9 +159,9 @@ class MusicGenerator:
                         f"Attempt {attempt + 1}/{self.MAX_RETRIES} failed, will retry..."
                     )
                     continue
-                else:
-                    Logger.print_error("All retry attempts exhausted")
-                    return None, None
+
+                Logger.print_error("All retry attempts exhausted")
+                return None, None
 
             except (OSError, RuntimeError, ValueError, TimeoutError) as e:
                 Logger.print_error(f"Error on attempt {attempt + 1}: {str(e)}")
@@ -513,10 +513,9 @@ class MusicGenerator:
         # Get background music from file or generate from prompt
         if background_music_path is not None:
             return self.get_background_music_from_file(background_music_path, thread_id)
-        else:
-            return self.get_background_music_from_prompt(
-                background_music_prompt, output_dir, skip_generation, thread_id, estimated_duration
-            )
+        return self.get_background_music_from_prompt(
+            background_music_prompt, output_dir, skip_generation, thread_id, estimated_duration
+        )
 
     def get_closing_credits_from_file(
         self, file_path: str, thread_id: str | None = None
@@ -664,12 +663,11 @@ class MusicGenerator:
         # Get closing credits from file or generate from prompt
         if closing_credits_path is not None:
             return self.get_closing_credits_from_file(closing_credits_path, thread_id), None
-        else:
-            return self.get_closing_credits_from_prompt(
-                closing_credits_prompt,
-                story_text,
-                output_dir,
-                skip_generation,
-                query_dispatcher,
-                thread_id,
-            )
+        return self.get_closing_credits_from_prompt(
+            closing_credits_prompt,
+            story_text,
+            output_dir,
+            skip_generation,
+            query_dispatcher,
+            thread_id,
+        )

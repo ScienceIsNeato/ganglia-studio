@@ -126,11 +126,10 @@ def generate_movie_poster(
                     os.makedirs(os.path.dirname(filename), exist_ok=True)
                     save_image_without_caption(image_url, filename, thread_id=thread_id)
                     return filename
-                else:
-                    Logger.print_error(
-                        f"{thread_prefix}No image was returned for the movie poster."
-                    )
-                    return None
+                Logger.print_error(
+                    f"{thread_prefix}No image was returned for the movie poster."
+                )
+                return None
             except Exception as e:
                 if "Rate limit exceeded" in str(e):
                     Logger.print_warning(
@@ -154,9 +153,8 @@ def generate_movie_poster(
                             f"{filtered_context}."
                         )
                         break  # Break the inner loop to try again with filtered content
-                    else:
-                        Logger.print_error(f"{thread_prefix}Failed to filter content")
-                        return None
+                    Logger.print_error(f"{thread_prefix}Failed to filter content")
+                    return None
                 else:
                     Logger.print_error(
                         f"{thread_prefix}An error occurred while generating the movie poster: {e}"

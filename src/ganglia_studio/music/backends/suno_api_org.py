@@ -168,7 +168,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
                 Logger.print_warning(warning_msg)
                 # Raise an exception to trigger retry
                 raise RuntimeError("Insufficient credits - will retry after delay")
-            elif response_data.get("code") != 200:  # Check other API response codes
+            if response_data.get("code") != 200:  # Check other API response codes
                 Logger.print_error(f"API error: {response_data.get('msg')}")
                 return None
 
@@ -235,22 +235,21 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             # Handle other known states
             if status == "PENDING":
                 return f"{title} - Initializing {time_status}", min(20.0, base_progress)
-            elif status == "TEXT_SUCCESS":
+            if status == "TEXT_SUCCESS":
                 return f"{title} - Processing lyrics {time_status}", min(99.0, base_progress + 20)
-            elif status == "PROCESSING":
+            if status == "PROCESSING":
                 return f"{title} - Processing {time_status}", base_progress
-            elif status == "CREATE_TASK_FAILED":
+            if status == "CREATE_TASK_FAILED":
                 return f"{title} - Error: Task creation failed", 0.0
-            elif status == "GENERATE_AUDIO_FAILED":
+            if status == "GENERATE_AUDIO_FAILED":
                 return f"{title} - Error: Audio generation failed", 0.0
-            elif status == "CALLBACK_EXCEPTION":
+            if status == "CALLBACK_EXCEPTION":
                 return f"{title} - Error: Callback failed", 0.0
-            elif status == "SENSITIVE_WORD_ERROR":
+            if status == "SENSITIVE_WORD_ERROR":
                 return f"{title} - Error: Contains sensitive words", 0.0
-            else:
-                # Log unexpected status
-                Logger.print_warning(f"Unexpected status '{status}' received from API")
-                return f"{title} - {status.lower()} {time_status}", base_progress
+            # Log unexpected status
+            Logger.print_warning(f"Unexpected status '{status}' received from API")
+            return f"{title} - {status.lower()} {time_status}", base_progress
 
         except Exception as e:
             Logger.print_error(f"Error checking progress: {str(e)}")

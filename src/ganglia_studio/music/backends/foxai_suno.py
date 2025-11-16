@@ -61,10 +61,9 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
                 tags=tags,
                 duration=duration,
             )
-        else:
-            return self._start_instrumental_song_job(
-                prompt=prompt, model=model, title=title, tags=tags, duration=duration
-            )
+        return self._start_instrumental_song_job(
+            prompt=prompt, model=model, title=title, tags=tags, duration=duration
+        )
 
     def check_progress(self, job_id: str) -> tuple[str, float]:
         """Check the progress of a generation job via API."""
@@ -93,15 +92,14 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
 
             if status == "complete":
                 return "Complete", 100
-            elif status == "error":
+            if status == "error":
                 error_type = meta_data.get("error_type", "Unknown error")
                 error_message = meta_data.get("error_message", "")
                 return f"Error: {error_type} - {error_message}", 0
-            else:
-                # Estimate progress based on typical generation time
-                elapsed = time.time() - self._get_start_time(job_id)
-                estimated_progress = min(95, (elapsed / 180) * 100)  # 3 minutes typical time
-                return f"{status} ({file_type})", estimated_progress
+            # Estimate progress based on typical generation time
+            elapsed = time.time() - self._get_start_time(job_id)
+            estimated_progress = min(95, (elapsed / 180) * 100)  # 3 minutes typical time
+            return f"{status} ({file_type})", estimated_progress
 
         except Exception as e:
             return f"Error: {str(e)}", 0

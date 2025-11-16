@@ -54,9 +54,9 @@ def get_ffmpeg_thread_count(is_ci: bool | None = None) -> int:
     # Use fewer threads when memory is constrained
     if memory_gb < 4:
         return min(2, cpu_count)
-    elif memory_gb <= 8:
+    if memory_gb <= 8:
         return min(4, cpu_count)
-    elif memory_gb < 16:
+    if memory_gb < 16:
         return min(6, cpu_count)
 
     # For systems with ample memory (16GB+), apply environment-specific limits

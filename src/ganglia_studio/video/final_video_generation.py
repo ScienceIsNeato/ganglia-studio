@@ -345,13 +345,12 @@ def assemble_final_video(
         if final_output_path:
             Logger.print_info(LOG_FINAL_VIDEO_PATH.format(final_output_path))
             return final_output_path
-        elif main_video_path:
+        if main_video_path:
             Logger.print_info(LOG_FINAL_VIDEO_PATH.format(main_video_path))
             return main_video_path
-        else:
-            fallback_path = os.path.join(output_dir, "fallback_video.mp4")
-            Logger.print_info(LOG_FINAL_VIDEO_PATH.format(fallback_path))
-            return fallback_path
+        fallback_path = os.path.join(output_dir, "fallback_video.mp4")
+        Logger.print_info(LOG_FINAL_VIDEO_PATH.format(fallback_path))
+        return fallback_path
 
 
 def generate_closing_credits(
@@ -459,9 +458,8 @@ def generate_closing_credits(
                 f"Generated closing credits video with captions at {closing_credits_video_path}"
             )
             return closing_credits_video_path
-        else:
-            Logger.print_error("Failed to add captions to closing credits video")
-            return initial_credits_video_path
+        Logger.print_error("Failed to add captions to closing credits video")
+        return initial_credits_video_path
 
     except (subprocess.CalledProcessError, OSError) as e:
         Logger.print_error(f"Error generating closing credits: {str(e)}")

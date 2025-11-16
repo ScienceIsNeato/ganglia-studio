@@ -147,28 +147,26 @@ def process_sentence(
         if captioned_path:
             Logger.print_info(f"{thread_id} Successfully added dynamic captions")
             return captioned_path, i
-        else:
-            Logger.print_error(f"{thread_id} Failed to add captions, using raw video")
-            return initial_segment_path, i
-    else:
-        # Add static captions
-        Logger.print_info(f"{thread_id} Adding static captions to video segment.")
-        final_segment_path = os.path.join(output_dir, f"segment_{i}.mp4")
-        captions = [CaptionEntry(sentence, 0.0, float("inf"))]  # Show for entire duration
-        with ffmpeg_thread_manager:
-            captioned_path = create_static_captions(
-                input_video=initial_segment_path,
-                captions=captions,
-                output_path=final_segment_path,
-                font_size=40,
-            )
+        Logger.print_error(f"{thread_id} Failed to add captions, using raw video")
+        return initial_segment_path, i
 
-        if captioned_path:
-            Logger.print_info(f"{thread_id} Successfully added static captions")
-            return captioned_path, i
-        else:
-            Logger.print_error(f"{thread_id} Failed to add captions, using raw video")
-            return initial_segment_path, i
+    # Add static captions
+    Logger.print_info(f"{thread_id} Adding static captions to video segment.")
+    final_segment_path = os.path.join(output_dir, f"segment_{i}.mp4")
+    captions = [CaptionEntry(sentence, 0.0, float("inf"))]  # Show for entire duration
+    with ffmpeg_thread_manager:
+        captioned_path = create_static_captions(
+            input_video=initial_segment_path,
+            captions=captions,
+            output_path=final_segment_path,
+            font_size=40,
+        )
+
+    if captioned_path:
+        Logger.print_info(f"{thread_id} Successfully added static captions")
+        return captioned_path, i
+    Logger.print_error(f"{thread_id} Failed to add captions, using raw video")
+    return initial_segment_path, i
 
 
 def process_story(
