@@ -6,7 +6,7 @@ Fix ALL 220 pylint warnings to achieve 10.0/10 rating, then ensure all tests pas
 ## Current Status
 - **Branch**: `ci/fix-dependency-installation`
 - **Last Commit**: `f13a822` - "refactor: fix 8 pylint issues - Phase 2 import hygiene"
-- **Progress**: 111/220 issues resolved (50%)
+- **Progress**: 149/220 issues resolved (68%)
 - **Current Rating**: ~9.36/10 (full pylint still blocked by later phases)
 
 ## What's Been Completed
@@ -57,6 +57,12 @@ Result: `pylint --enable=C0415` now exits cleanly (10.00/10 for that rule set).
 - Converted control flow to early returns / sequential checks; no behavior changes, only structural clarity.
 - Targeted check: `pylint --disable=all --enable=R1705,R1720,R1723,R1724` now passes at 10.00/10.
 
+### ✅ Phase 4 - Positional Argument Hygiene (38/38 issues fixed)
+
+- All music backends + `MusicGenerator` now require optional parameters via keywords (no more 7-10 positional args).
+- Video layer refactored: movie poster generator, final-video assembler, and caption stack (`captions.py`) expose keyword-only knobs, and every call site/test updated accordingly.
+- `pylint --disable=all --enable=R0917` returns 0 findings (10.00/10).
+
 ## What Remains
 
 ### 🔄 Phase 1 - Quick Wins (Remaining: 0 issues)
@@ -69,22 +75,8 @@ Completed; all dynamic imports are now hoisted to module scope.
 ### 📋 Phase 3 - Code Structure ✅
 Structural cleanups complete; onward to Phase 4 (function signatures).
 
-### 📋 Phase 4 - Too Many Positional Arguments (38 instances - R0917)
-**Issue**: Functions with >5 positional arguments (hard to read/maintain)
-
-**Strategy**: Convert to keyword-only arguments or create config dataclasses.
-
-**Options:**
-1. Add `*,` to force keyword-only args after position 5
-2. Create config objects (e.g., `MusicGenConfig`, `CaptionConfig`)
-3. Use `**kwargs` with validation
-
-**Most affected files:**
-- `music/music_lib.py`: 5 functions
-- `music/backends/`: Multiple backends (7/5, 8/5, 10/5 violations)
-- `video/captions.py`: 7 functions
-- `video/story_generation.py`: 2 functions
-- `video/story_processor.py`: 2 functions
+### 📋 Phase 4 - Too Many Positional Arguments ✅
+Completed (all `R0917` cleared); proceed to Phase 5 complexity refactors.
 
 ### 📋 Phase 5 - Function Complexity (27 instances)
 **Issue**: Functions are too complex

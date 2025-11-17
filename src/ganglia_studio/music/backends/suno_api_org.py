@@ -50,14 +50,15 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
     def start_generation(
         self,
         prompt: str,
+        *,
         with_lyrics: bool = False,
-        title: str = None,
-        tags: str = None,
-        story_text: str = None,
+        title: str | None = None,
+        tags: str | None = None,
+        story_text: str | None = None,
         wait_audio: bool = False,
         query_dispatcher=None,
         model: str = "V3_5",
-        duration: int = None,
+        duration: int | None = None,
     ) -> str:
         """Start the generation process via API."""
         if not self.api_key:
@@ -306,8 +307,9 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
     def generate_instrumental(
         self,
         prompt: str,
-        title: str = None,
-        tags: str = None,
+        *,
+        title: str | None = None,
+        tags: str | None = None,
         wait_audio: bool = False,
         duration: int = 30,
         model: str = "V3_5",
@@ -360,11 +362,12 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
         self,
         prompt: str,
         story_text: str,
-        title: str = None,
-        tags: str = None,
+        *,
+        title: str | None = None,
+        tags: str | None = None,
         query_dispatcher=None,
         wait_audio: bool = False,
-        duration: int = None,
+        duration: int | None = None,
     ) -> tuple[str, str]:
         """Generate music with lyrics (blocking)."""
         job_id = self.start_generation(

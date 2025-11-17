@@ -89,11 +89,12 @@ def generate_movie_poster(
     filtered_story_json: str,
     style: str,
     story_title: str,
+    *,
     query_dispatcher: Any,
     retries: int = 5,
     wait_time: float = 60,
     thread_id: str = "[MoviePoster]",
-    output_dir: str = None,
+    output_dir: str | None = None,
 ) -> str | None:
     thread_prefix = f"{thread_id} " if thread_id else ""
     try:
@@ -175,6 +176,7 @@ def generate_movie_poster(
 
 def filter_text(
     text: str,
+    *,
     context: str | None = None,
     style: str | None = None,
     query_dispatcher: Any | None = None,

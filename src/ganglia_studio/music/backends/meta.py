@@ -133,7 +133,13 @@ class MetaMusicBackend(MusicBackend):
             return None
 
     def _update_progress(
-        self, job_id: str, status: str, progress: float, output_path: str = None, error: str = None
+        self,
+        job_id: str,
+        status: str,
+        progress: float,
+        *,
+        output_path: str | None = None,
+        error: str | None = None,
     ):
         """Update the progress file for a job."""
         progress_file = os.path.join(self.progress_directory, f"{job_id}.json")

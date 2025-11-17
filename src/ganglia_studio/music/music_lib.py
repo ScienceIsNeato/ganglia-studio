@@ -75,6 +75,7 @@ class MusicGenerator:
     def generate_instrumental(
         self,
         prompt: str,
+        *,
         duration: int | None = None,
         title: str | None = None,
         tags: list[str] | None = None,
@@ -122,6 +123,7 @@ class MusicGenerator:
         self,
         backend,
         prompt: str,
+        *,
         duration: int | None = None,
         title: str | None = None,
         tags: list[str] | None = None,
@@ -175,6 +177,7 @@ class MusicGenerator:
         self,
         backend,
         prompt: str,
+        *,
         with_lyrics: bool = False,
         title: str | None = None,
         tags: list[str] | None = None,
@@ -257,6 +260,7 @@ class MusicGenerator:
         self,
         prompt: str,
         story_text: str,
+        *,
         title: str | None = None,
         tags: list[str] | None = None,
         output_path: str | None = None,
@@ -402,6 +406,7 @@ class MusicGenerator:
         self,
         prompt: str,
         output_dir: str,
+        *,
         skip_generation: bool = False,
         thread_id: str | None = None,
         target_duration: int | None = None,
@@ -467,6 +472,7 @@ class MusicGenerator:
         self,
         config: Any,
         output_dir: str,
+        *,
         skip_generation: bool = False,
         thread_id: str | None = None,
     ) -> str | None:
@@ -514,7 +520,11 @@ class MusicGenerator:
         if background_music_path is not None:
             return self.get_background_music_from_file(background_music_path, thread_id)
         return self.get_background_music_from_prompt(
-            background_music_prompt, output_dir, skip_generation, thread_id, estimated_duration
+            background_music_prompt,
+            output_dir,
+            skip_generation=skip_generation,
+            thread_id=thread_id,
+            target_duration=estimated_duration,
         )
 
     def get_closing_credits_from_file(
@@ -541,6 +551,7 @@ class MusicGenerator:
         prompt: str,
         story_text: str,
         output_dir: str,
+        *,
         skip_generation: bool = False,
         query_dispatcher: Any | None = None,
         thread_id: str | None = None,
@@ -615,6 +626,7 @@ class MusicGenerator:
         config: Any,
         story_text: str,
         output_dir: str,
+        *,
         skip_generation: bool = False,
         query_dispatcher: Any | None = None,
         thread_id: str | None = None,
@@ -667,7 +679,7 @@ class MusicGenerator:
             closing_credits_prompt,
             story_text,
             output_dir,
-            skip_generation,
-            query_dispatcher,
-            thread_id,
+            skip_generation=skip_generation,
+            query_dispatcher=query_dispatcher,
+            thread_id=thread_id,
         )

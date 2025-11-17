@@ -32,16 +32,17 @@ from .video_generation import create_video_segment
 
 
 def process_sentence(
-    i,
-    sentence,
-    context,
-    style,
-    total_images,
-    tts,
-    skip_generation,
-    query_dispatcher,
-    config,
-    output_dir,
+    i: int,
+    sentence: str,
+    context: str,
+    style: str,
+    *,
+    total_images: int,
+    tts: GoogleTTS,
+    skip_generation: bool,
+    query_dispatcher: Any | None = None,
+    config: TTVConfig | None = None,
+    output_dir: str,
 ):
     """Process a single sentence into a video segment with audio and captions.
 
@@ -92,9 +93,9 @@ def process_sentence(
             sentence,
             context,
             style,
-            i,
-            total_images,
-            query_dispatcher,
+            image_index=i,
+            total_images=total_images,
+            query_dispatcher=query_dispatcher,
             preloaded_images_dir=preloaded_images_dir,
             thread_id=thread_id,
             output_dir=output_dir,
@@ -175,6 +176,7 @@ def process_story(
     story: list[str],
     output_dir: str,
     config: TTVConfig,
+    *,
     skip_generation: bool = False,
     query_dispatcher: Any | None = None,
     story_title: str | None = None,
@@ -240,7 +242,7 @@ def process_story(
                     story_json,
                     style,
                     story_title,
-                    query_dispatcher,
+                    query_dispatcher=query_dispatcher,
                     output_dir=output_dir,
                 )
                 futures.append(("movie_poster", movie_poster_future))
@@ -411,6 +413,7 @@ def process_story_segment(
     total_segments: int,
     tts_engine: GoogleTTS,
     style: str,
+    *,
     query_dispatcher: Any | None = None,
     context: str = "",
     thread_id: str | None = None,

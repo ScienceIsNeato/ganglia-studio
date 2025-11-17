@@ -235,6 +235,7 @@ def add_background_music(
 def assemble_final_video(
     video_segments: list[str],
     output_dir: str,
+    *,
     music_path: str | None = None,
     song_with_lyrics_path: str | None = None,
     movie_poster_path: str | None = None,

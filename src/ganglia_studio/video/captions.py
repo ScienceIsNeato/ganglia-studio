@@ -188,6 +188,7 @@ def calculate_word_position(
     word: Word,
     cursor_x: int,
     cursor_y: int,
+    *,
     line_height: int,
     roi_width: int,
     roi_height: int,
@@ -373,6 +374,7 @@ def calculate_text_size(text, font_size, font_path=None):
 
 def _create_text_clip(
     word: Word,
+    *,
     position: tuple[int, int],
     text_color: tuple[int, int, int],
     stroke_color: tuple[int, int, int],
@@ -404,6 +406,7 @@ def _create_text_clip(
 
 def _create_shadow_clip(
     word: Word,
+    *,
     position: tuple[int, int],
     clip_dimensions: tuple[int, int],
     margins: tuple[int, int, int, int],
@@ -453,6 +456,7 @@ def _calculate_clip_dimensions(
 def _create_word_clips(
     word: Word,
     window: CaptionWindow,
+    *,
     roi_x: int,
     roi_y: int,
     roi_width: int,
@@ -529,6 +533,7 @@ def _create_word_clips(
 
 def _process_caption_window(
     window: CaptionWindow,
+    *,
     roi_x: int,
     roi_y: int,
     roi_width: int,
@@ -595,6 +600,7 @@ def create_dynamic_captions(
     input_video: str,
     captions: list[CaptionEntry],
     output_path: str,
+    *,
     min_font_size: int = 32,
     max_font_ratio: float = 1.5,
     font_name: str = get_default_font(),
@@ -776,6 +782,7 @@ def create_static_captions(
     input_video: str,
     captions: list[CaptionEntry],
     output_path: str,
+    *,
     font_size: int = 40,
     font_name: str = get_default_font(),
     box_color: str = "black@0.5",  # Semi-transparent background

@@ -26,14 +26,16 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
 
     def start_generation(
         self,
+        prompt: str,
+        *,
         with_lyrics: bool = False,
-        title: str = None,
-        tags: str = None,
-        story_text: str = None,
+        title: str | None = None,
+        tags: str | None = None,
+        story_text: str | None = None,
         wait_audio: bool = False,
         query_dispatcher=None,
         model: str = "chirp-v3-5",
-        duration: int = None,
+        duration: int | None = None,
     ) -> str:
         """Start the generation process via API.
 
@@ -132,7 +134,13 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
             return None
 
     def _start_instrumental_song_job(
-        self, prompt: str, model: str, title: str = None, tags: str = None, duration: int = 30
+        self,
+        prompt: str,
+        *,
+        model: str,
+        title: str | None = None,
+        tags: str | None = None,
+        duration: int | None = 30,
     ) -> str:
         """Start a job for instrumental music generation."""
         endpoint = f"{self.api_base_url}/gateway/generate"
@@ -212,12 +220,13 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
 
     def _start_lyrical_song_job(
         self,
+        *,
         model: str,
         story_text: str,
-        query_dispatcher,
-        title: str = None,
-        tags: str = None,
-        duration: int = None,
+        query_dispatcher=None,
+        title: str | None = None,
+        tags: str | None = None,
+        duration: int | None = None,
     ) -> str:
         """Start a job for music generation with lyrics."""
         try:
@@ -344,8 +353,9 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
     def generate_instrumental(
         self,
         prompt: str,
-        title: str = None,
-        tags: str = None,
+        *,
+        title: str | None = None,
+        tags: str | None = None,
         wait_audio: bool = False,
         duration: int = 30,
         model: str = "V3_5",
@@ -398,11 +408,12 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
         self,
         prompt: str,
         story_text: str,
-        title: str = None,
-        tags: str = None,
+        *,
+        title: str | None = None,
+        tags: str | None = None,
         query_dispatcher=None,
         wait_audio: bool = False,
-        duration: int = None,
+        duration: int | None = None,
     ) -> tuple[str, str]:
         """Generate music with lyrics and return both the audio file path and lyrics.
 

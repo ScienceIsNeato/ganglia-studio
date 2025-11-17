@@ -27,6 +27,7 @@ def generate_image(
     sentence: str,
     context: str,
     style: str,
+    *,
     image_index: int,
     total_images: int,
     query_dispatcher: ChatGPTQueryDispatcher,
@@ -192,6 +193,7 @@ def save_image_with_caption(
     caption: str,
     current_step: int,
     total_steps: int,
+    *,
     thread_id: str | None = None,
 ) -> None:
     """Save an image from URL with a caption overlay.
@@ -277,6 +279,7 @@ def create_caption_overlay(
     current_step: int,
     total_steps: int,
     width: int,
+    *,
     height: int | None = None,
     background_color: tuple[int, int, int] = (255, 255, 255),
     text_color: tuple[int, int, int] = (0, 0, 0),
@@ -334,6 +337,7 @@ def create_caption_overlay(
 def generate_image_with_dalle(
     prompt: str,
     output_path: str,
+    *,
     size: str = "1024x1024",
     quality: str = "standard",
     style: str = "vivid",
