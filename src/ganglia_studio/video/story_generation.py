@@ -85,6 +85,63 @@ def generate_filtered_story(context, style, story_title, query_dispatcher):
         return json.dumps({"style": style, "title": story_title, "story": "No story generated"})
 
 
+def _parse_story_context(filtered_story_json, thread_prefix):
+    """Parse and validate story context from JSON."""
+    try:
+        filtered_story = json.loads(filtered_story_json)
+    except json.JSONDecodeError:
+        Logger.print_error(f"{thread_prefix}Filtered story is not in valid JSON format")
+        return None
+
+    filtered_context = filtered_story.get("story", "")
+    if not filtered_context:
+        Logger.print_error(f"{thread_prefix}Filtered story does not contain a story")
+        return None
+
+    return filtered_context
+
+
+def _build_poster_prompt(story_title, style, filtered_context):
+    """Build DALL-E prompt for movie poster."""
+    return (
+        f"Create a movie poster for the story titled '{story_title}' "
+        f"with the style of {style} and context: {filtered_context}."
+    )
+
+
+def _generate_poster_image(client, prompt, output_dir, thread_id, thread_prefix):
+    """Generate and save poster image."""
+    response = client.images.generate(
+        model="dall-e-3", prompt=prompt, size="1024x1024", quality="standard", n=1
+    )
+    if not response.data:
+        Logger.print_error(f"{thread_prefix}No image was returned for the movie poster.")
+        return None
+
+    image_url = response.data[0].url
+    filename = os.path.join(output_dir, "movie_poster.png")
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    save_image_without_caption(image_url, filename, thread_id=thread_id)
+    return filename
+
+
+def _handle_poster_generation_error(e, attempt, retries, wait_time, thread_prefix):
+    """Handle errors during poster generation and return action."""
+    if "Rate limit exceeded" in str(e):
+        Logger.print_warning(
+            f"{thread_prefix}Rate limit exceeded. Retrying in {wait_time} seconds... "
+            f"(Attempt {attempt + 1} of {retries})"
+        )
+        time.sleep(wait_time)
+        return "retry"
+
+    if "safety system" in str(e).lower():
+        return "safety"
+
+    Logger.print_error(f"{thread_prefix}An error occurred while generating the movie poster: {e}")
+    return "error"
+
+
 def generate_movie_poster(
     filtered_story_json: str,
     style: str,
@@ -97,49 +154,28 @@ def generate_movie_poster(
     output_dir: str | None = None,
 ) -> str | None:
     thread_prefix = f"{thread_id} " if thread_id else ""
-    try:
-        filtered_story = json.loads(filtered_story_json)
-    except json.JSONDecodeError:
-        Logger.print_error(f"{thread_prefix}Filtered story is not in valid JSON format")
-        return None
 
-    filtered_context = filtered_story.get("story", "")
+    filtered_context = _parse_story_context(filtered_story_json, thread_prefix)
     if not filtered_context:
-        Logger.print_error(f"{thread_prefix}Filtered story does not contain a story")
         return None
 
-    prompt = (
-        "Create a movie poster for the story titled "
-        f"'{story_title}' with the style of {style} and context: {filtered_context}."
-    )
+    prompt = _build_poster_prompt(story_title, style, filtered_context)
     safety_retries = 3
 
     for safety_attempt in range(safety_retries):
         for attempt in range(retries):
             try:
                 client = get_openai_client()
-                response = client.images.generate(
-                    model="dall-e-3", prompt=prompt, size="1024x1024", quality="standard", n=1
-                )
-                if response.data:
-                    image_url = response.data[0].url
-                    filename = os.path.join(output_dir, "movie_poster.png")
-                    os.makedirs(os.path.dirname(filename), exist_ok=True)
-                    save_image_without_caption(image_url, filename, thread_id=thread_id)
-                    return filename
-                Logger.print_error(
-                    f"{thread_prefix}No image was returned for the movie poster."
-                )
-                return None
+                return _generate_poster_image(client, prompt, output_dir, thread_id, thread_prefix)
+
             except Exception as e:
-                if "Rate limit exceeded" in str(e):
-                    Logger.print_warning(
-                        f"{thread_prefix}Rate limit exceeded. Retrying in {wait_time} seconds... "
-                        f"(Attempt {attempt + 1} of {retries})"
-                    )
-                    time.sleep(wait_time)
-                elif "safety system" in str(e).lower():
-                    # If we hit a safety rejection, try to filter the content further
+                action = _handle_poster_generation_error(
+                    e, attempt, retries, wait_time, thread_prefix
+                )
+
+                if action == "retry":
+                    continue
+                if action == "safety":
                     Logger.print_warning(
                         f"{thread_prefix}Safety system rejection. Attempting to filter content "
                         f"(Attempt {safety_attempt + 1} of {safety_retries})"
@@ -148,23 +184,13 @@ def generate_movie_poster(
                         filtered_context
                     )
                     if success:
-                        prompt = (
-                            "Create a movie poster for the story titled "
-                            f"'{story_title}' with the style of {style} and context: "
-                            f"{filtered_context}."
-                        )
-                        break  # Break the inner loop to try again with filtered content
+                        prompt = _build_poster_prompt(story_title, style, filtered_context)
+                        break
                     Logger.print_error(f"{thread_prefix}Failed to filter content")
                     return None
-                else:
-                    Logger.print_error(
-                        f"{thread_prefix}An error occurred while generating the movie poster: {e}"
-                    )
-                    return None
+                return None
         else:
-            # Inner loop completed without safety issues but hit rate limit
             continue
-        # If we get here, we had a safety issue and filtered the content, so try again
         continue
 
     Logger.print_error(
