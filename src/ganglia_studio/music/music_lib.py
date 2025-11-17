@@ -204,57 +204,83 @@ class MusicGenerator:
             a tuple containing (audio_path, lyrics), or None if generation fails
         """
         try:
-            # Start generation
-            job_id = backend.start_generation(
-                prompt=prompt,
-                with_lyrics=with_lyrics,
-                title=title,
-                tags=tags,
-                duration=duration,
-                story_text=story_text,
-                query_dispatcher=query_dispatcher,
+            job_id = self._start_backend_generation(
+                backend, prompt, with_lyrics, title, tags, duration, story_text, query_dispatcher
             )
             if not job_id:
-                Logger.print_error(f"Failed to start generation with {backend.__class__.__name__}")
                 return None
 
-            # Poll for completion
-            while True:
-                status, progress = backend.check_progress(job_id)
-                Logger.print_info(f"Generation progress: {status} ({progress:.1f}%)")
+            self._poll_until_complete(backend, job_id)
 
-                if progress >= 100:
-                    break
-
-                time.sleep(5)  # Wait before checking again
-
-            # Get result
             result = backend.get_result(job_id)
             if not result:
                 Logger.print_error(f"Failed to get result from {backend.__class__.__name__}")
                 return None
 
-            # If we have an output path and a result, copy the file
-            if output_path and isinstance(result, str):
-                try:
-                    shutil.copy2(result, output_path)
-                    return output_path
-                except OSError as e:
-                    Logger.print_error(f"Failed to copy file to output path: {e}")
-                    return result
-            elif output_path and isinstance(result, tuple) and result[0]:
-                try:
-                    shutil.copy2(result[0], output_path)
-                    return output_path, result[1] if len(result) > 1 else None
-                except OSError as e:
-                    Logger.print_error(f"Failed to copy file to output path: {e}")
-                    return result
-
-            return result
+            return self._copy_result_to_output(result, output_path)
 
         except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             Logger.print_error(f"Error with {backend.__class__.__name__}: {str(e)}")
             return None
+
+    def _start_backend_generation(
+        self, backend, prompt, with_lyrics, title, tags, duration, story_text, query_dispatcher
+    ):
+        """Start generation with the backend."""
+        job_id = backend.start_generation(
+            prompt=prompt,
+            with_lyrics=with_lyrics,
+            title=title,
+            tags=tags,
+            duration=duration,
+            story_text=story_text,
+            query_dispatcher=query_dispatcher,
+        )
+        if not job_id:
+            Logger.print_error(f"Failed to start generation with {backend.__class__.__name__}")
+        return job_id
+
+    def _poll_until_complete(self, backend, job_id):
+        """Poll backend until generation is complete."""
+        while True:
+            status, progress = backend.check_progress(job_id)
+            Logger.print_info(f"Generation progress: {status} ({progress:.1f}%)")
+
+            if progress >= 100:
+                break
+
+            time.sleep(5)
+
+    def _copy_result_to_output(self, result, output_path):
+        """Copy generated result to output path if specified."""
+        if not output_path:
+            return result
+
+        if isinstance(result, str):
+            return self._copy_single_file(result, output_path)
+
+        if isinstance(result, tuple) and result[0]:
+            return self._copy_tuple_result(result, output_path)
+
+        return result
+
+    def _copy_single_file(self, result, output_path):
+        """Copy a single file result to output path."""
+        try:
+            shutil.copy2(result, output_path)
+            return output_path
+        except OSError as e:
+            Logger.print_error(f"Failed to copy file to output path: {e}")
+            return result
+
+    def _copy_tuple_result(self, result, output_path):
+        """Copy tuple result (audio, lyrics) to output path."""
+        try:
+            shutil.copy2(result[0], output_path)
+            return output_path, result[1] if len(result) > 1 else None
+        except OSError as e:
+            Logger.print_error(f"Failed to copy file to output path: {e}")
+            return result
 
     def generate_with_lyrics(
         self,
@@ -284,47 +310,24 @@ class MusicGenerator:
             f"Generating music with lyrics. Prompt: {prompt}, Story length: {len(story_text)}"
         )
 
-        # Start generation
-        job_id = self.backend.start_generation(
-            prompt=prompt,
+        result = self._try_generate_with_backend(
+            self.backend,
+            prompt,
             with_lyrics=True,
             title=title,
             tags=tags,
             story_text=story_text,
             query_dispatcher=query_dispatcher,
+            output_path=output_path,
         )
-        if not job_id:
-            Logger.print_error("Failed to start generation")
-            return None, None
 
-        # Poll for completion
-        while True:
-            status, progress = self.backend.check_progress(job_id)
-            Logger.print_info(f"Generation progress: {status} ({progress:.1f}%)")
-
-            if progress >= 100:
-                break
-
-            time.sleep(5)  # Wait before checking again
-
-        # Get result and lyrics
-        result = self.backend.get_result(job_id)
         if not result:
             return None, None
 
-        # If we have an output path and a result, copy the file
-        if output_path and isinstance(result, tuple) and result[0]:
-            try:
-                shutil.copy2(result[0], output_path)
-                # If we successfully copied the file, return the output path and lyrics
-                return output_path, result[1] if isinstance(result, tuple) and len(
-                    result
-                ) > 1 else None
-            except OSError as e:
-                Logger.print_error(f"Failed to copy file to output path: {e}")
-                return result if isinstance(result, tuple) else (result, None)
+        if isinstance(result, tuple):
+            return result
 
-        return result
+        return result, None
 
     def validate_audio_file(self, file_path: str, thread_id: str | None = None) -> bool:
         """Validate that a file exists and is a valid audio file.
