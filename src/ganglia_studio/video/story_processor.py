@@ -562,6 +562,75 @@ def process_story_segment(
         return None
 
 
+def _submit_video_segment_jobs(executor, segments, output_dir, thread_id):
+    """Submit video segment creation jobs."""
+    futures = []
+    for i, segment in enumerate(segments):
+        try:
+            initial_segment_path = os.path.join(output_dir, f"segment_{i}_initial.mp4")
+            future = executor.submit(
+                create_video_segment,
+                image_path=segment["image"],
+                audio_path=segment["audio"],
+                output_path=initial_segment_path,
+                thread_id=f"{thread_id}_{i}" if thread_id else None,
+            )
+            futures.append((future, i, segment, initial_segment_path))
+        except Exception as e:
+            thread_prefix = f"{thread_id} " if thread_id else ""
+            Logger.print_error(f"{thread_prefix}Error submitting segment {i + 1}: {str(e)}")
+    return futures
+
+
+def _process_segment_with_captions(future, i, segment, output_dir, thread_id):
+    """Process a single segment by adding captions."""
+    video_path = future.result()
+    if not video_path:
+        raise ValueError(f"Failed to create initial video for segment {i + 1}")
+
+    captions = create_word_level_captions(
+        segment["audio"],
+        segment["text"],
+        thread_id=f"{thread_id}_{i}" if thread_id else None,
+    )
+    if not captions:
+        raise ValueError(f"Failed to generate captions for segment {i + 1}")
+
+    final_segment_path = os.path.join(output_dir, f"segment_{i}.mp4")
+    captioned_path = create_dynamic_captions(
+        input_video=video_path,
+        captions=captions,
+        output_path=final_segment_path,
+        min_font_size=32,
+        max_font_ratio=1.5,
+    )
+
+    if not captioned_path:
+        raise ValueError(f"Failed to add captions to segment {i + 1}")
+
+    return captioned_path
+
+
+def _concatenate_video_segments(video_segments, output_dir, output_path):
+    """Concatenate video segments into final video."""
+    list_file = os.path.join(output_dir, "segments.txt")
+    with open(list_file, "w", encoding="utf-8") as f:
+        for segment in video_segments:
+            f.write(f"file '{segment}'\n")
+
+    with ffmpeg_thread_manager:
+        cmd = [
+            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+            "-i", list_file, "-c", "copy", output_path,
+        ]
+        result = subprocess.run(cmd, check=True, capture_output=True)
+
+    if result.returncode != 0:
+        raise ValueError(f"Failed to concatenate segments: {result.stderr.decode()}")
+
+    return list_file
+
+
 def create_video_with_captions(
     segments: list[dict[str, str]], output_path: str, output_dir: str, thread_id: str | None = None
 ) -> str | None:
@@ -576,92 +645,26 @@ def create_video_with_captions(
         Optional[str]: Path to final video if successful
     """
     thread_prefix = f"{thread_id} " if thread_id else ""
+    video_segments = []
+    list_file = None
 
     try:
-        # Create video segments
-        video_segments = []
-        futures = []
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            for i, segment in enumerate(segments):
+            futures = _submit_video_segment_jobs(executor, segments, output_dir, thread_id)
+
+            for future, i, segment, _ in futures:
                 try:
-                    # First create initial video segment without captions
-                    initial_segment_path = os.path.join(output_dir, f"segment_{i}_initial.mp4")
-                    future = executor.submit(
-                        create_video_segment,
-                        image_path=segment["image"],
-                        audio_path=segment["audio"],
-                        output_path=initial_segment_path,
-                        thread_id=f"{thread_id}_{i}" if thread_id else None,
+                    captioned_path = _process_segment_with_captions(
+                        future, i, segment, output_dir, thread_id
                     )
-                    futures.append((future, i, segment, initial_segment_path))
-                except Exception as e:
-                    Logger.print_error(f"{thread_prefix}Error submitting segment {i + 1}: {str(e)}")
-                    continue
-
-            # Process results as they complete
-            for future, i, segment, initial_segment_path in futures:
-                try:
-                    video_path = future.result()
-                    if not video_path:
-                        raise ValueError(f"Failed to create initial video for segment {i + 1}")
-
-                    # Generate word-level captions
-                    captions = create_word_level_captions(
-                        segment["audio"],
-                        segment["text"],
-                        thread_id=f"{thread_id}_{i}" if thread_id else None,
-                    )
-                    if not captions:
-                        raise ValueError(f"Failed to generate captions for segment {i + 1}")
-
-                    # Add dynamic captions to the video segment
-                    final_segment_path = os.path.join(output_dir, f"segment_{i}.mp4")
-                    captioned_path = create_dynamic_captions(
-                        input_video=video_path,
-                        captions=captions,
-                        output_path=final_segment_path,
-                        min_font_size=32,
-                        max_font_ratio=1.5,  # Max will be 48 (1.5x the min)
-                    )
-
-                    if not captioned_path:
-                        raise ValueError(f"Failed to add captions to segment {i + 1}")
-
                     video_segments.append(captioned_path)
-
                 except (OSError, ValueError) as e:
                     Logger.print_error(f"{thread_prefix}Error processing segment {i + 1}: {str(e)}")
-                    continue
 
-        # Combine segments
         if not video_segments:
             raise ValueError("No video segments were created successfully")
 
-        # Create list file for concatenation
-        list_file = os.path.join(output_dir, "segments.txt")
-        with open(list_file, "w", encoding="utf-8") as f:
-            for segment in video_segments:
-                f.write(f"file '{segment}'\n")
-
-        # Concatenate segments using thread manager
-        with ffmpeg_thread_manager:
-            cmd = [
-                "ffmpeg",
-                "-y",
-                "-f",
-                "concat",
-                "-safe",
-                "0",
-                "-i",
-                list_file,
-                "-c",
-                "copy",
-                output_path,
-            ]
-            result = subprocess.run(cmd, check=True, capture_output=True)
-
-        if result.returncode != 0:
-            raise ValueError(f"Failed to concatenate segments: {result.stderr.decode()}")
+        list_file = _concatenate_video_segments(video_segments, output_dir, output_path)
 
         Logger.print_info(f"{thread_prefix}Successfully created video at {output_path}")
         return output_path
@@ -670,14 +673,13 @@ def create_video_with_captions(
         Logger.print_error(f"{thread_prefix}Error creating video: {str(e)}")
         return None
     finally:
-        # Cleanup temporary files
         try:
-            if os.path.exists(list_file):
+            if list_file and os.path.exists(list_file):
                 os.remove(list_file)
             for segment in video_segments:
                 if os.path.exists(segment):
                     os.remove(segment)
-        except (OSError, UnboundLocalError) as e:
+        except OSError as e:
             Logger.print_warning(f"{thread_prefix}Error cleaning up temporary files: {str(e)}")
 
 
