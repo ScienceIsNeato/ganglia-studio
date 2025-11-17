@@ -64,98 +64,130 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
         if not self.api_key:
             raise OSError("Environment variable 'SUNO_API_ORG_KEY' is not set.")
         try:
-            # Ensure model is set to a valid value
-            if not model or model not in ["V3_5", "V4"]:
-                Logger.print_warning(f"Invalid model '{model}', defaulting to 'V3_5'")
-                model = "V3_5"
-
-            # Use appropriate duration based on type
-            if with_lyrics:
-                actual_duration = (
-                    duration if duration is not None else self.DEFAULT_CREDITS_DURATION
-                )
-            else:
-                actual_duration = duration if duration is not None else 30
-
-            # Enhance prompt with duration and title context
-            enhanced_prompt = f"Create a {actual_duration}-second {prompt}"
-            if title:
-                enhanced_prompt = f"{enhanced_prompt} titled '{title}'"
-
-            # Determine if we should use custom mode based on parameters
+            model = self._validate_model(model)
+            actual_duration = self._get_duration(with_lyrics, duration)
+            enhanced_prompt = self._build_enhanced_prompt(prompt, actual_duration, title)
             use_custom_mode = bool(title or tags)
 
-            # Validate custom mode requirements
-            if use_custom_mode:
-                if not title:
-                    Logger.print_error("Title is required in custom mode")
-                    return None
-                if not tags:
-                    Logger.print_error("Style (tags) is required in custom mode")
-                    return None
-                if not with_lyrics and not prompt:
-                    Logger.print_error("Prompt is required in custom mode for instrumental")
-                    return None
-
-            # Add lyrics to prompt if provided
-            if with_lyrics and story_text:
-                if use_custom_mode:
-                    # In custom mode, story_text is sent separately
-                    data = {
-                        "prompt": enhanced_prompt[:3000],  # Limit prompt to 3000 chars
-                        "style": tags[:200],  # Limit style to 200 chars
-                        "title": title[:80],  # Limit title to 80 chars
-                        "lyrics": story_text[:3000],  # Limit lyrics to 3000 chars
-                        "instrumental": False,
-                        "customMode": True,
-                        "callBackUrl": "https://example.com/callback",
-                        "model": model,  # Add model parameter
-                    }
-                else:
-                    # In non-custom mode, send story_text as lyrics
-                    data = {
-                        "prompt": enhanced_prompt[:3000],  # Limit prompt to 3000 chars
-                        "lyrics": story_text[:3000],  # Limit lyrics to 3000 chars
-                        "instrumental": False,
-                        "customMode": False,
-                        "callBackUrl": "https://example.com/callback",
-                        "model": model,  # Add model parameter
-                    }
-            else:
-                # Handle instrumental cases
-                if use_custom_mode:
-                    data = {
-                        "prompt": enhanced_prompt[:3000],  # Limit prompt to 3000 chars
-                        "style": tags[:200],  # Limit style to 200 chars
-                        "title": title[:80],  # Limit title to 80 chars
-                        "instrumental": True,
-                        "customMode": True,
-                        "callBackUrl": "https://example.com/callback",
-                        "model": model,  # Add model parameter
-                    }
-                else:
-                    data = {
-                        "prompt": enhanced_prompt[:400],  # Limit prompt to 400 chars
-                        "instrumental": True,
-                        "customMode": False,
-                        "callBackUrl": "https://example.com/callback",
-                        "model": model,  # Add model parameter
-                    }
-
-            response = self._make_api_request(
-                "post", f"{self.api_base_url}/generate", headers=self.headers, json=data, timeout=30
-            )
-
-            if response.status_code != 200:
-                Logger.print_error(f"Failed to start generation: {response.text}")
+            if use_custom_mode and not self._validate_custom_mode(title, tags, with_lyrics, prompt):
                 return None
 
-            response_data = response.json()
-            if (
-                response_data.get("code") == 429
-                and "credits are insufficient" in response_data.get("msg", "").lower()
-            ):
-                warning_msg = """
+            data = self._build_request_data(
+                enhanced_prompt, model, with_lyrics, story_text, use_custom_mode, title, tags
+            )
+
+            return self._submit_generation_request(data)
+
+        except Exception as e:
+            Logger.print_error(f"Failed to start generation: {str(e)}")
+            return None
+
+    def _validate_model(self, model):
+        """Validate and normalize model name."""
+        if not model or model not in ["V3_5", "V4"]:
+            Logger.print_warning(f"Invalid model '{model}', defaulting to 'V3_5'")
+            return "V3_5"
+        return model
+
+    def _get_duration(self, with_lyrics, duration):
+        """Get appropriate duration based on generation type."""
+        if with_lyrics:
+            return duration if duration is not None else self.DEFAULT_CREDITS_DURATION
+        return duration if duration is not None else 30
+
+    def _build_enhanced_prompt(self, prompt, actual_duration, title):
+        """Build enhanced prompt with duration and title."""
+        enhanced_prompt = f"Create a {actual_duration}-second {prompt}"
+        if title:
+            enhanced_prompt = f"{enhanced_prompt} titled '{title}'"
+        return enhanced_prompt
+
+    def _validate_custom_mode(self, title, tags, with_lyrics, prompt):
+        """Validate custom mode requirements."""
+        if not title:
+            Logger.print_error("Title is required in custom mode")
+            return False
+        if not tags:
+            Logger.print_error("Style (tags) is required in custom mode")
+            return False
+        if not with_lyrics and not prompt:
+            Logger.print_error("Prompt is required in custom mode for instrumental")
+            return False
+        return True
+
+    def _build_request_data(
+        self, enhanced_prompt, model, with_lyrics, story_text, use_custom_mode, title, tags
+    ):
+        """Build API request data based on parameters."""
+        if with_lyrics and story_text:
+            return self._build_lyrical_data(
+                enhanced_prompt, model, story_text, use_custom_mode, title, tags
+            )
+        return self._build_instrumental_data(enhanced_prompt, model, use_custom_mode, title, tags)
+
+    def _build_lyrical_data(self, enhanced_prompt, model, story_text, use_custom_mode, title, tags):
+        """Build request data for lyrical generation."""
+        base_data = {
+            "prompt": enhanced_prompt[:3000],
+            "lyrics": story_text[:3000],
+            "instrumental": False,
+            "customMode": use_custom_mode,
+            "callBackUrl": "https://example.com/callback",
+            "model": model,
+        }
+        if use_custom_mode:
+            base_data["style"] = tags[:200]
+            base_data["title"] = title[:80]
+        return base_data
+
+    def _build_instrumental_data(self, enhanced_prompt, model, use_custom_mode, title, tags):
+        """Build request data for instrumental generation."""
+        prompt_limit = 3000 if use_custom_mode else 400
+        base_data = {
+            "prompt": enhanced_prompt[:prompt_limit],
+            "instrumental": True,
+            "customMode": use_custom_mode,
+            "callBackUrl": "https://example.com/callback",
+            "model": model,
+        }
+        if use_custom_mode:
+            base_data["style"] = tags[:200]
+            base_data["title"] = title[:80]
+        return base_data
+
+    def _submit_generation_request(self, data):
+        """Submit generation request to API and handle response."""
+        response = self._make_api_request(
+            "post", f"{self.api_base_url}/generate", headers=self.headers, json=data, timeout=30
+        )
+
+        if response.status_code != 200:
+            Logger.print_error(f"Failed to start generation: {response.text}")
+            return None
+
+        response_data = response.json()
+        if (
+            response_data.get("code") == 429
+            and "credits are insufficient" in response_data.get("msg", "").lower()
+        ):
+            self._handle_insufficient_credits(response_data)
+            raise RuntimeError("Insufficient credits - will retry after delay")
+
+        if response_data.get("code") != 200:
+            Logger.print_error(f"API error: {response_data.get('msg')}")
+            return None
+
+        job_id = response_data.get("data", {}).get("taskId")
+        if job_id:
+            self._save_start_time(job_id)
+            return job_id
+
+        Logger.print_error("No job ID in response")
+        return None
+
+    def _handle_insufficient_credits(self, response_data):
+        """Handle insufficient credits error."""
+        warning_msg = """
 ╔════════════════════════════════════════════════════════════════════╗
 ║                       INSUFFICIENT CREDITS                          ║
 ║                                                                    ║
@@ -166,25 +198,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
 ║  Error: {msg}                                                      ║
 ╚════════════════════════════════════════════════════════════════════╝
 """.format(msg=response_data.get("msg"))
-                Logger.print_warning(warning_msg)
-                # Raise an exception to trigger retry
-                raise RuntimeError("Insufficient credits - will retry after delay")
-            if response_data.get("code") != 200:  # Check other API response codes
-                Logger.print_error(f"API error: {response_data.get('msg')}")
-                return None
-
-            job_id = response_data.get("data", {}).get("taskId")  # Updated to use taskId
-
-            if job_id:
-                self._save_start_time(job_id)
-                return job_id
-
-            Logger.print_error("No job ID in response")
-            return None
-
-        except Exception as e:
-            Logger.print_error(f"Failed to start generation: {str(e)}")
-            return None
+        Logger.print_warning(warning_msg)
 
     def check_progress(self, job_id: str) -> tuple[str, float]:
         """Check the progress of a generation job via API."""
@@ -208,53 +222,60 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
 
             generation_data = response_data.get("data", {})
             status = generation_data.get("status", "").upper()
+            title = self._extract_title_from_params(generation_data.get("param", "{}"))
 
-            # Get title for status message
-            param_str = generation_data.get("param", "{}")
-            try:
-                params = json.loads(param_str)
-                title = params.get("title", "Untitled")
-            except (json.JSONDecodeError, KeyError, TypeError):
-                title = "Untitled"
-
-            # Calculate elapsed time and progress
             elapsed = time.time() - self._get_start_time(job_id)
-            expected_duration = 120  # 2 minutes expected duration
+            expected_duration = 120
             base_progress = min(99.0, (elapsed / expected_duration) * 100)
             time_status = f"[{int(elapsed)}s/{expected_duration}s]"
 
-            # Check for success states first
-            if status in ["SUCCESS", "FIRST_SUCCESS"]:
-                generation_response = generation_data.get("response") or {}
-                suno_data = generation_response.get("sunoData", [])
-                if suno_data and suno_data[0].get("streamAudioUrl"):
-                    Logger.print_info(f"Found stream audio URL in {status} state")
-                    return "complete", 100.0
-                Logger.print_info(f"No stream audio URL yet in {status} state")
-                return f"{title} - Finalizing {time_status}", 99.0
-
-            # Handle other known states
-            if status == "PENDING":
-                return f"{title} - Initializing {time_status}", min(20.0, base_progress)
-            if status == "TEXT_SUCCESS":
-                return f"{title} - Processing lyrics {time_status}", min(99.0, base_progress + 20)
-            if status == "PROCESSING":
-                return f"{title} - Processing {time_status}", base_progress
-            if status == "CREATE_TASK_FAILED":
-                return f"{title} - Error: Task creation failed", 0.0
-            if status == "GENERATE_AUDIO_FAILED":
-                return f"{title} - Error: Audio generation failed", 0.0
-            if status == "CALLBACK_EXCEPTION":
-                return f"{title} - Error: Callback failed", 0.0
-            if status == "SENSITIVE_WORD_ERROR":
-                return f"{title} - Error: Contains sensitive words", 0.0
-            # Log unexpected status
-            Logger.print_warning(f"Unexpected status '{status}' received from API")
-            return f"{title} - {status.lower()} {time_status}", base_progress
+            return self._interpret_status(status, generation_data, title, time_status, base_progress)
 
         except Exception as e:
             Logger.print_error(f"Error checking progress: {str(e)}")
             return f"Error: {str(e)}", 0.0
+
+    def _extract_title_from_params(self, param_str):
+        """Extract title from API parameters JSON string."""
+        try:
+            params = json.loads(param_str)
+            return params.get("title", "Untitled")
+        except (json.JSONDecodeError, KeyError, TypeError):
+            return "Untitled"
+
+    def _interpret_status(self, status, generation_data, title, time_status, base_progress):
+        """Interpret API status and return progress tuple."""
+        status_map = {
+            "PENDING": (f"{title} - Initializing {time_status}", min(20.0, base_progress)),
+            "TEXT_SUCCESS": (
+                f"{title} - Processing lyrics {time_status}",
+                min(99.0, base_progress + 20),
+            ),
+            "PROCESSING": (f"{title} - Processing {time_status}", base_progress),
+            "CREATE_TASK_FAILED": (f"{title} - Error: Task creation failed", 0.0),
+            "GENERATE_AUDIO_FAILED": (f"{title} - Error: Audio generation failed", 0.0),
+            "CALLBACK_EXCEPTION": (f"{title} - Error: Callback failed", 0.0),
+            "SENSITIVE_WORD_ERROR": (f"{title} - Error: Contains sensitive words", 0.0),
+        }
+
+        if status in ["SUCCESS", "FIRST_SUCCESS"]:
+            return self._check_success_state(status, generation_data, title, time_status)
+
+        if status in status_map:
+            return status_map[status]
+
+        Logger.print_warning(f"Unexpected status '{status}' received from API")
+        return f"{title} - {status.lower()} {time_status}", base_progress
+
+    def _check_success_state(self, status, generation_data, title, time_status):
+        """Check if SUCCESS state has audio URL ready."""
+        generation_response = generation_data.get("response") or {}
+        suno_data = generation_response.get("sunoData", [])
+        if suno_data and suno_data[0].get("streamAudioUrl"):
+            Logger.print_info(f"Found stream audio URL in {status} state")
+            return "complete", 100.0
+        Logger.print_info(f"No stream audio URL yet in {status} state")
+        return f"{title} - Finalizing {time_status}", 99.0
 
     def get_result(self, job_id: str) -> str:
         """Get the result of a completed generation job."""
@@ -270,32 +291,14 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
 
             Logger.print_info(f"Result response: {response.text}")
 
-            if response.status_code != 200:
-                Logger.print_error(f"Failed to get result: HTTP {response.status_code}")
+            error_msg = self._validate_result_response(response)
+            if error_msg:
+                Logger.print_error(error_msg)
                 return None
 
             response_data = response.json()
-            if response_data.get("code") != 200:
-                Logger.print_error(f"API error: {response_data.get('msg')}")
-                return None
-
-            generation_data = response_data.get("data", {})
-            status = generation_data.get("status", "").upper()
-
-            # Accept both success states
-            if status not in ["SUCCESS", "FIRST_SUCCESS"]:
-                Logger.print_error(f"Generation not in success state: {status}")
-                return None
-
-            # Get the audio URL from sunoData
-            suno_data = generation_data.get("response", {}).get("sunoData", [])
-            if not suno_data:
-                Logger.print_error("No suno data in response")
-                return None
-
-            audio_url = suno_data[0].get("streamAudioUrl")
+            audio_url = self._extract_audio_url(response_data)
             if not audio_url:
-                Logger.print_error("No stream audio URL in response")
                 return None
 
             return self._download_audio(audio_url, job_id)
@@ -303,6 +306,38 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
         except Exception as e:
             Logger.print_error(f"Failed to get result: {str(e)}")
             return None
+
+    def _validate_result_response(self, response):
+        """Validate response from result API call."""
+        if response.status_code != 200:
+            return f"Failed to get result: HTTP {response.status_code}"
+
+        response_data = response.json()
+        if response_data.get("code") != 200:
+            return f"API error: {response_data.get('msg')}"
+
+        return None
+
+    def _extract_audio_url(self, response_data):
+        """Extract audio URL from API response data."""
+        generation_data = response_data.get("data", {})
+        status = generation_data.get("status", "").upper()
+
+        if status not in ["SUCCESS", "FIRST_SUCCESS"]:
+            Logger.print_error(f"Generation not in success state: {status}")
+            return None
+
+        suno_data = generation_data.get("response", {}).get("sunoData", [])
+        if not suno_data:
+            Logger.print_error("No suno data in response")
+            return None
+
+        audio_url = suno_data[0].get("streamAudioUrl")
+        if not audio_url:
+            Logger.print_error("No stream audio URL in response")
+            return None
+
+        return audio_url
 
     def generate_instrumental(
         self,
