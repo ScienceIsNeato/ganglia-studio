@@ -51,90 +51,84 @@ def calculate_activity_map(frame: np.ndarray, block_size: int = 32) -> np.ndarra
     return activity_map
 
 
-def find_roi_in_frame(frame, block_size=32):
-    """Find optimal ROI in a single frame."""
+def _crop_frame_with_buffer(frame: np.ndarray, buffer_ratio: float = 0.05):
+    """Crop frame by buffer ratio and return cropped frame with buffers."""
     height, width = frame.shape[:2]
-
-    # Calculate 5% buffer size
-    buffer_x = int(width * 0.05)
-    buffer_y = int(height * 0.05)
-
-    # Create a new frame with the buffer cut off
+    buffer_x = int(width * buffer_ratio)
+    buffer_y = int(height * buffer_ratio)
     cropped_frame = frame[buffer_y : height - buffer_y, buffer_x : width - buffer_x]
+    return cropped_frame, buffer_x, buffer_y
 
-    # Calculate 10% border size
-    border_x = int(cropped_frame.shape[1] * 0.1)
-    border_y = int(cropped_frame.shape[0] * 0.1)
 
-    # Calculate target ROI area (aim for 1/7th of frame area as a middle ground)
-    target_area = (
-        (cropped_frame.shape[1] - 2 * border_x) * (cropped_frame.shape[0] - 2 * border_y)
-    ) / 7
+def _compute_borders(cropped_frame: np.ndarray, border_ratio: float = 0.1) -> tuple[int, int]:
+    """Compute border offsets for cropped frame."""
+    border_x = int(cropped_frame.shape[1] * border_ratio)
+    border_y = int(cropped_frame.shape[0] * border_ratio)
+    return border_x, border_y
 
-    # Calculate ROI dimensions to achieve target area while being taller than wide
-    # Make height 1.5 times the width to ensure portrait orientation
+
+def _calculate_roi_dimensions(cropped_frame, border_x, border_y):
+    """Calculate ROI width/height ensuring portrait orientation."""
+    available_width = cropped_frame.shape[1] - 2 * border_x
+    available_height = cropped_frame.shape[0] - 2 * border_y
+    target_area = (available_width * available_height) / 7
     roi_width = int(np.sqrt(target_area / 1.5))
     roi_height = int(roi_width * 1.5)
+    return min(roi_width, available_width), min(roi_height, available_height)
 
-    # Ensure dimensions don't exceed frame
-    roi_width = min(roi_width, cropped_frame.shape[1] - 2 * border_x)
-    roi_height = min(roi_height, cropped_frame.shape[0] - 2 * border_y)
 
-    # Calculate activity map
+def _locate_roi_position(cropped_frame, border_x, border_y, roi_width, roi_height, block_size):
+    """Locate ROI position based on activity map."""
     activity_map = calculate_activity_map(cropped_frame, block_size)
+    blocks_h = cropped_frame.shape[0] // block_size
+    blocks_w = cropped_frame.shape[1] // block_size
+    is_uniform = np.std(activity_map) < 0.01
 
-    # Find position with minimum activity
+    if is_uniform:
+        return (
+            (cropped_frame.shape[1] - roi_width) // 2,
+            (cropped_frame.shape[0] - roi_height) // 2,
+        )
+
     valid_y = cropped_frame.shape[0] - roi_height - 2 * border_y
     valid_x = cropped_frame.shape[1] - roi_width - 2 * border_x
-
     min_activity = float("inf")
     best_x = border_x
     best_y = border_y
 
-    # Convert block coordinates to pixel coordinates
-    blocks_h = cropped_frame.shape[0] // block_size
-    blocks_w = cropped_frame.shape[1] // block_size
+    for y in range(border_y, valid_y + 1, block_size):
+        for x in range(border_x, valid_x + 1, block_size):
+            block_y = y // block_size
+            block_x = x // block_size
+            if (
+                block_y + (roi_height // block_size) > blocks_h
+                or block_x + (roi_width // block_size) > blocks_w
+            ):
+                continue
 
-    # Check if frame is uniform (all activity levels are equal)
-    # This happens with solid color frames or very uniform content
-    is_uniform = np.std(activity_map) < 0.01  # Very low variance indicates uniform frame
-
-    if is_uniform:
-        # For uniform frames, center the ROI since there's no preferred location
-        best_x = (cropped_frame.shape[1] - roi_width) // 2
-        best_y = (cropped_frame.shape[0] - roi_height) // 2
-    else:
-        # For non-uniform frames, find the region with minimum activity
-        for y in range(border_y, valid_y + 1, block_size):
-            for x in range(border_x, valid_x + 1, block_size):
-                # Convert pixel coordinates to block coordinates
-                block_y = y // block_size
-                block_x = x // block_size
-
-                # Ensure we don't exceed activity map bounds
-                if (
-                    block_y + (roi_height // block_size) > blocks_h
-                    or block_x + (roi_width // block_size) > blocks_w
-                ):
-                    continue
-
-                # Get activity for this region
-                region = activity_map[
+            activity = np.mean(
+                activity_map[
                     block_y : block_y + (roi_height // block_size),
                     block_x : block_x + (roi_width // block_size),
                 ]
-                activity = np.mean(region)  # Use mean instead of sum for better scaling
+            )
+            if activity < min_activity:
+                min_activity = activity
+                best_x = x
+                best_y = y
 
-                if activity < min_activity:
-                    min_activity = activity
-                    best_x = x
-                    best_y = y
+    return best_x, best_y
 
-    # Adjust best_x and best_y to account for the initial buffer
-    best_x += buffer_x
-    best_y += buffer_y
 
-    return (best_x, best_y, roi_width, roi_height)
+def find_roi_in_frame(frame, block_size=32):
+    """Find optimal ROI in a single frame."""
+    cropped_frame, buffer_x, buffer_y = _crop_frame_with_buffer(frame)
+    border_x, border_y = _compute_borders(cropped_frame)
+    roi_width, roi_height = _calculate_roi_dimensions(cropped_frame, border_x, border_y)
+    best_x, best_y = _locate_roi_position(
+        cropped_frame, border_x, border_y, roi_width, roi_height, block_size
+    )
+    return (best_x + buffer_x, best_y + buffer_y, roi_width, roi_height)
 
 
 def find_optimal_roi(video_path: str, block_size: int = 32) -> tuple[int, int, int, int] | None:

@@ -232,6 +232,66 @@ def add_background_music(
         return None
 
 
+def _apply_background_music(main_video_path, music_path, output_dir):
+    """Apply background music if provided."""
+    if music_path and os.path.exists(music_path):
+        Logger.print_info(f"Adding background music from {music_path}...")
+        with_music = add_background_music(
+            video_path=main_video_path, music_path=music_path, output_dir=output_dir
+        )
+        if with_music:
+            return with_music
+        Logger.print_warning("Failed to add background music, using video without music")
+    else:
+        Logger.print_info("No background music specified, skipping...")
+    return main_video_path
+
+
+def _append_closing_credits(
+    base_video_path,
+    song_with_lyrics_path,
+    movie_poster_path,
+    output_dir,
+    config,
+    closing_credits_lyrics,
+):
+    """Append closing credits if all assets are available."""
+    if not (song_with_lyrics_path and os.path.exists(song_with_lyrics_path)):
+        Logger.print_info("No closing credits specified, skipping...")
+        return base_video_path
+
+    Logger.print_info(f"Generating closing credits with {song_with_lyrics_path}...")
+    if not (movie_poster_path and os.path.exists(movie_poster_path)):
+        Logger.print_warning(
+            "No movie poster available for closing credits, using video without credits"
+        )
+        return base_video_path
+
+    closing_credits = generate_closing_credits(
+        movie_poster_path,
+        song_with_lyrics_path,
+        output_dir,
+        config,
+        closing_credits_lyrics,
+    )
+    if not closing_credits:
+        Logger.print_warning("Failed to generate closing credits, using video without credits")
+        return base_video_path
+
+    Logger.print_info("Appending closing credits to main video...")
+    final_output_path = append_video_segments(
+        [base_video_path, closing_credits],
+        output_dir=output_dir,
+        force_reencode=True,
+    )
+    if final_output_path:
+        Logger.print_info(f"Successfully added closing credits from {song_with_lyrics_path}")
+        return final_output_path
+
+    Logger.print_warning("Failed to append closing credits, using video without credits")
+    return base_video_path
+
+
 def assemble_final_video(
     video_segments: list[str],
     output_dir: str,
@@ -265,64 +325,15 @@ def assemble_final_video(
             return None
         Logger.print_info("Successfully concatenated video segments")
 
-        final_output_path = main_video_path
-
-        # Handle background music
-        if music_path and os.path.exists(music_path):
-            Logger.print_info(f"Adding background music from {music_path}...")
-            main_video_with_background_music_path = add_background_music(
-                video_path=main_video_path, music_path=music_path, output_dir=output_dir
-            )
-            if main_video_with_background_music_path:
-                final_output_path = main_video_with_background_music_path
-            else:
-                Logger.print_warning("Failed to add background music, using video without music")
-                final_output_path = main_video_path
-        else:
-            Logger.print_info("No background music specified, skipping...")
-            main_video_with_background_music_path = main_video_path
-
-        # Handle closing credits
-        if song_with_lyrics_path and os.path.exists(song_with_lyrics_path):
-            Logger.print_info(f"Generating closing credits with {song_with_lyrics_path}...")
-            if movie_poster_path and os.path.exists(movie_poster_path):
-                closing_credits = generate_closing_credits(
-                    movie_poster_path,
-                    song_with_lyrics_path,
-                    output_dir,
-                    config,
-                    closing_credits_lyrics,
-                )
-                if closing_credits:
-                    # Stitch together the main content and the credits
-                    Logger.print_info("Appending closing credits to main video...")
-                    final_output_path = append_video_segments(
-                        [main_video_with_background_music_path, closing_credits],
-                        output_dir=output_dir,
-                        force_reencode=True,  # Force re-encoding to fix audio playback
-                    )
-                    if final_output_path:
-                        Logger.print_info(
-                            f"Successfully added closing credits from {song_with_lyrics_path}"
-                        )
-                    else:
-                        Logger.print_warning(
-                            "Failed to append closing credits, using video without credits"
-                        )
-                        final_output_path = main_video_with_background_music_path
-                else:
-                    Logger.print_warning(
-                        "Failed to generate closing credits, using video without credits"
-                    )
-                    final_output_path = main_video_with_background_music_path
-            else:
-                Logger.print_warning(
-                    "No movie poster available for closing credits, using video without credits"
-                )
-                final_output_path = main_video_with_background_music_path
-        else:
-            Logger.print_info("No closing credits specified, skipping...")
-            final_output_path = main_video_with_background_music_path
+        final_output_path = _apply_background_music(main_video_path, music_path, output_dir)
+        final_output_path = _append_closing_credits(
+            final_output_path,
+            song_with_lyrics_path,
+            movie_poster_path,
+            output_dir,
+            config,
+            closing_credits_lyrics,
+        )
 
         # Standardize the name of the final video to final_video.mp4
         exit_output_path = os.path.join(output_dir, "final_video.mp4")
