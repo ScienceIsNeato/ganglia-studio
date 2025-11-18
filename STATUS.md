@@ -6,8 +6,8 @@ Fix ALL 220 pylint warnings to achieve 10.0/10 rating, then ensure all tests pas
 ## Current Status
 - **Branch**: `ci/fix-dependency-installation`
 - **Last Commit**: `f13a822` - "refactor: fix 8 pylint issues - Phase 2 import hygiene"
-- **Progress**: 149/220 issues resolved (68%)
-- **Current Rating**: ~9.36/10 (full pylint still blocked by later phases)
+- **Progress**: 176/220 issues resolved (80%)
+- **Current Rating**: 10.0/10 for complexity-focused pylint subset
 
 ## What's Been Completed
 
@@ -78,17 +78,10 @@ Structural cleanups complete; onward to Phase 4 (function signatures).
 ### 📋 Phase 4 - Too Many Positional Arguments ✅
 Completed (all `R0917` cleared); proceed to Phase 5 complexity refactors.
 
-### 📋 Phase 5 - Function Complexity (27 instances)
-**Issue**: Functions are too complex
-
-**Categories:**
-- 14x `too-many-locals` (R0914) - >20 local variables
-- 7x `too-many-return-statements` (R0911) - >6 returns
-- 4x `too-many-branches` (R0912) - >15 branches
-- 1x `too-many-statements` (R0915) - >60 statements
-- 1x `too-many-nested-blocks` (R1702) - >5 nested levels
-
-**Strategy**: Extract helper functions, use early returns, simplify logic.
+### 📋 Phase 5 - Function Complexity ✅
+- Refactored `music/music_lib.py`, music backends, and `video/story_processor.py`.
+- Simplified ROI detection, final video assembly, and all dynamic/static captions helpers.
+- `pylint --disable=all --enable=R0914,R0911,R0912,R0915,R1702` now passes cleanly.
 
 ### 📋 Phase 6 - Too Many Instance Attributes (3 instances - R0902)
 **Issue**: Classes with >7 instance attributes
