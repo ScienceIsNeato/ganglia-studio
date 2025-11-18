@@ -6,7 +6,7 @@ Fix ALL 220 pylint warnings to achieve 10.0/10 rating, then ensure all tests pas
 ## Current Status
 - **Branch**: `ci/fix-dependency-installation`
 - **Last Commit**: `f13a822` - "refactor: fix 8 pylint issues - Phase 2 import hygiene"
-- **Progress**: 176/220 issues resolved (80%)
+- **Progress**: 179/220 issues resolved (81%)
 - **Current Rating**: 10.0/10 for complexity-focused pylint subset
 
 ## What's Been Completed
@@ -83,14 +83,10 @@ Completed (all `R0917` cleared); proceed to Phase 5 complexity refactors.
 - Simplified ROI detection, final video assembly, and all dynamic/static captions helpers.
 - `pylint --disable=all --enable=R0914,R0911,R0912,R0915,R1702` now passes cleanly.
 
-### 📋 Phase 6 - Too Many Instance Attributes (3 instances - R0902)
-**Issue**: Classes with >7 instance attributes
-
-**Files:**
-- `video/config_loader.py:17` - TTVConfig (8/7)
-- `video/captions.py:46` - CaptionGenerator (8/7)
-
-**Fix**: Consider breaking into smaller classes or accept the complexity for config objects.
+### 📋 Phase 6 - Too Many Instance Attributes ✅
+- Introduced `MusicOptions` wrapper + properties in `TTVConfig`.
+- Refined `Word` into `WordLayout` container and added layout helper dataclasses.
+- Simplified `FFmpegOperation` to rely on manager state instead of duplicating queues.
 
 ### 📋 Phase 7 - Arguments Differ (3 instances - W0221)
 **Issue**: Overriding methods with different signatures than base class

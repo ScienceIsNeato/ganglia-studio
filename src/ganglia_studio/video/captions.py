@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import traceback
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from ganglia_common.logger import Logger
@@ -46,17 +46,56 @@ def get_default_font() -> str:
 
 
 @dataclass
+class WordLayout:
+    """Layout metadata for a caption word."""
+
+    line_number: int = 0
+    font_size: int = 0
+    x_position: int = 0
+    width: int = 0
+
+
+@dataclass
 class Word:
     """Represents a single word in a caption with timing and display properties."""
 
     text: str
     start_time: float
     end_time: float
-    line_number: int = 0
-    font_size: int = 0
-    x_position: int = 0
-    width: int = 0
     font_name: str = get_default_font()
+    layout: WordLayout = field(default_factory=WordLayout)
+
+    @property
+    def line_number(self) -> int:
+        return self.layout.line_number
+
+    @line_number.setter
+    def line_number(self, value: int):
+        self.layout.line_number = value
+
+    @property
+    def font_size(self) -> int:
+        return self.layout.font_size
+
+    @font_size.setter
+    def font_size(self, value: int):
+        self.layout.font_size = value
+
+    @property
+    def x_position(self) -> int:
+        return self.layout.x_position
+
+    @x_position.setter
+    def x_position(self, value: int):
+        self.layout.x_position = value
+
+    @property
+    def width(self) -> int:
+        return self.layout.width
+
+    @width.setter
+    def width(self, value: int):
+        self.layout.width = value
 
     @classmethod
     def from_timed_word(

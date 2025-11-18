@@ -81,9 +81,6 @@ class FFmpegOperation(threading.Thread):
         self.error = None
         self.daemon = True  # Allow the program to exit even if threads are running
         self.manager = manager
-        self.lock = threading.Lock()
-        self.active_operations = []
-        self.operation_queue = queue.Queue()
 
     def run(self):
         try:
@@ -96,20 +93,20 @@ class FFmpegOperation(threading.Thread):
             self.error = error
             self.completed = True  # Mark as completed even on error
             # Remove self from active operations immediately on error
-            with self.lock:
-                if self in self.active_operations:
-                    self.active_operations.remove(self)
+            with self.manager.lock:
+                if self in self.manager.active_operations:
+                    self.manager.active_operations.remove(self)
                     try:
-                        self.operation_queue.get_nowait()
+                        self.manager.operation_queue.get_nowait()
                     except queue.Empty:
                         pass
         finally:
             # Remove self from active operations when done
-            with self.lock:
-                if self in self.active_operations:
-                    self.active_operations.remove(self)
+            with self.manager.lock:
+                if self in self.manager.active_operations:
+                    self.manager.active_operations.remove(self)
                     try:
-                        self.operation_queue.get_nowait()
+                        self.manager.operation_queue.get_nowait()
                     except queue.Empty:
                         pass
 
