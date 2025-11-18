@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import time
+from dataclasses import dataclass
 from typing import Any
 
 # First party imports
@@ -29,6 +30,27 @@ from .captions import CaptionEntry, create_dynamic_captions, create_static_capti
 from .image_generation import generate_blank_image, generate_image
 from .story_generation import generate_movie_poster
 from .video_generation import create_video_segment
+
+
+@dataclass
+class WordTiming:
+    """Represents a word with its start and end times from audio."""
+
+    text: str
+    start: float
+    end: float
+
+
+@dataclass
+class StoryTaskResults:
+    """Container for asynchronous story processing task outputs."""
+
+    segments: list[str]
+    segment_indices: list[int]
+    movie_poster_path: str | None
+    background_music_path: str | None
+    closing_credits_path: str | None
+    closing_credits_lyrics: str | None
 
 
 def process_sentence(
@@ -203,9 +225,24 @@ def _add_static_captions(initial_segment_path, final_segment_path, sentence, i, 
     return initial_segment_path, i
 
 
+def _needs_music(config) -> bool:
+    """Check whether any music generation is configured."""
+    return bool(getattr(config, "background_music", None) or getattr(config, "closing_credits", None))
+
+
 def _submit_parallel_tasks(
-    executor, story, total_segments, style, tts, config, skip_generation,
-    query_dispatcher, story_title, output_dir, thread_id, music_generator
+    executor,
+    story,
+    total_segments,
+    style,
+    tts,
+    config,
+    skip_generation,
+    query_dispatcher,
+    story_title,
+    output_dir,
+    thread_id,
+    music_generator,
 ):
     """Submit all parallel tasks and return futures."""
     futures = []
@@ -232,7 +269,7 @@ def _submit_parallel_tasks(
         query_dispatcher, output_dir, futures
     )
 
-    return futures, movie_poster_future, background_music_future, closing_credits_future, segment_futures
+    return futures
 
 
 def _submit_movie_poster_task(
@@ -374,10 +411,20 @@ def _collect_task_results(futures, thread_prefix):
                 )
                 background_music_path = None
 
-    return (
-        segments, segment_indices, movie_poster_path, background_music_path,
-        closing_credits_path, closing_credits_lyrics
+    return StoryTaskResults(
+        segments=segments,
+        segment_indices=segment_indices,
+        movie_poster_path=movie_poster_path,
+        background_music_path=background_music_path,
+        closing_credits_path=closing_credits_path,
+        closing_credits_lyrics=closing_credits_lyrics,
     )
+
+
+def _order_segments(segments, indices):
+    """Order segments using their original indices."""
+    segments_with_indices = sorted(zip(segments, indices), key=lambda x: x[1])
+    return [segment for segment, _ in segments_with_indices]
 
 
 def process_story(
@@ -425,39 +472,44 @@ def process_story(
         total_segments = len(story)
         Logger.print_info(f"{thread_prefix}Processing {total_segments} story segments")
 
-        needs_music = (hasattr(config, "background_music") and config.background_music) or \
-                      (hasattr(config, "closing_credits") and config.closing_credits)
-        music_generator = MusicGenerator(config=config) if needs_music else None
+        music_generator = MusicGenerator(config=config) if _needs_music(config) else None
 
-        max_workers = total_segments + 2
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures, *_ = _submit_parallel_tasks(
-                executor, story, total_segments, style, tts, config, skip_generation,
-                query_dispatcher, story_title, output_dir, thread_id, music_generator
+        with concurrent.futures.ThreadPoolExecutor(max_workers=total_segments + 2) as executor:
+            futures = _submit_parallel_tasks(
+                executor,
+                story,
+                total_segments,
+                style,
+                tts,
+                config,
+                skip_generation,
+                query_dispatcher,
+                story_title,
+                output_dir,
+                thread_id,
+                music_generator,
             )
 
-            (segments, segment_indices, movie_poster_path, background_music_path,
-             closing_credits_path, closing_credits_lyrics) = _collect_task_results(futures, thread_prefix)
+            task_results = _collect_task_results(futures, thread_prefix)
 
-            if not segments:
+            if not task_results.segments:
                 Logger.print_error(f"{thread_prefix}All segments failed to process")
                 return None, None, None, None, None
 
-            segments_with_indices = list(zip(segments, segment_indices))
-            segments_with_indices.sort(key=lambda x: x[1])
-            segments = [s[0] for s in segments_with_indices]
+            ordered_segments = _order_segments(
+                task_results.segments, task_results.segment_indices
+            )
 
             Logger.print_info(
-                f"{thread_prefix}Successfully processed {len(segments)}/{total_segments} segments"
+                f"{thread_prefix}Successfully processed {len(ordered_segments)}/{total_segments} segments"
             )
 
         return (
-            segments,
-            background_music_path,
-            closing_credits_path,
-            movie_poster_path,
-            closing_credits_lyrics,
+            ordered_segments,
+            task_results.background_music_path,
+            task_results.closing_credits_path,
+            task_results.movie_poster_path,
+            task_results.closing_credits_lyrics,
         )
 
     except Exception as e:
