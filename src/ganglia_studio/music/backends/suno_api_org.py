@@ -42,7 +42,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             if response.status_code == 401:
                 Logger.print_warning("Authentication failed (401) - will retry in a moment...")
                 time.sleep(2)  # Add a minimum delay before retry
-                raise Exception("Authentication failed - retrying...")
+                raise RuntimeError("Authentication failed - retrying...")
             return response
 
         return exponential_backoff(_request, max_retries=5, initial_delay=5.0)
@@ -187,7 +187,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
 
     def _handle_insufficient_credits(self, response_data):
         """Handle insufficient credits error."""
-        warning_msg = """
+        warning_msg = f"""
 ╔════════════════════════════════════════════════════════════════════╗
 ║                       INSUFFICIENT CREDITS                          ║
 ║                                                                    ║
@@ -195,9 +195,9 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
 ║  Please top up your credits to continue generating music.          ║
 ║  Will retry after delay.                                          ║
 ║                                                                    ║
-║  Error: {msg}                                                      ║
+║  Error: {response_data.get("msg")}                                                      ║
 ╚════════════════════════════════════════════════════════════════════╝
-""".format(msg=response_data.get("msg"))
+"""
         Logger.print_warning(warning_msg)
 
     def check_progress(self, job_id: str) -> tuple[str, float]:

@@ -1,28 +1,23 @@
 import json
 import os
 import time
+from functools import lru_cache
 from typing import Any
 
 import requests
 from ganglia_common.logger import Logger
 from openai import OpenAI
 
-# Lazy initialization of OpenAI client to avoid requiring API key at import time
-_client = None
-
-
+@lru_cache(maxsize=1)
 def get_openai_client():
     """Get or create the OpenAI client instance."""
-    global _client
-    if _client is None:
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "OPENAI_API_KEY environment variable must be set. "
-                "Please add it to your .envrc file."
-            )
-        _client = OpenAI(api_key=api_key)
-    return _client
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "OPENAI_API_KEY environment variable must be set. "
+            "Please add it to your .envrc file."
+        )
+    return OpenAI(api_key=api_key)
 
 
 def generate_filtered_story(context, style, story_title, query_dispatcher):

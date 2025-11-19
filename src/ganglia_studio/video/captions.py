@@ -855,7 +855,7 @@ def create_dynamic_captions(
         if context is None:
             return None
 
-        roi_x, roi_y, roi_width, roi_height = context.roi
+        _, _, roi_width, roi_height = context.roi
 
         all_words = _collect_caption_words(
             captions,

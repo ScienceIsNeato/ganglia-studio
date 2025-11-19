@@ -6,8 +6,8 @@ Fix ALL 220 pylint warnings to achieve 10.0/10 rating, then ensure all tests pas
 ## Current Status
 - **Branch**: `ci/fix-dependency-installation`
 - **Last Commit**: `f13a822` - "refactor: fix 8 pylint issues - Phase 2 import hygiene"
-- **Progress**: 179/220 issues resolved (81%)
-- **Current Rating**: 10.0/10 for complexity-focused pylint subset
+- **Progress**: 188/220 issues resolved (85%)
+- **Current Rating**: 10.0/10 for targeted lint subsets (complexity, structure, misc cleanup)
 
 ## What's Been Completed
 
@@ -88,21 +88,14 @@ Completed (all `R0917` cleared); proceed to Phase 5 complexity refactors.
 - Refined `Word` into `WordLayout` container and added layout helper dataclasses.
 - Simplified `FFmpegOperation` to rely on manager state instead of duplicating queues.
 
-### 📋 Phase 7 - Arguments Differ (3 instances - W0221)
-**Issue**: Overriding methods with different signatures than base class
+### ✅ Phase 7 - Interface Consistency
+- Signature mismatches resolved across music backends; `pylint --enable=W0221` clean.
 
-**Files:**
-- `music/backends/meta.py`: 3 methods differ from MusicBackend base
-
-**Fix**: Make signatures compatible or use `*args, **kwargs`.
-
-### 📋 Phase 8 - Misc Cleanup (8 instances)
-- 2x `global-statement` (W0603)
-- 2x `broad-exception-raised` (W0719) - raising `Exception` instead of specific type
-- 2x `reimported` (W0404)
-- 2x `redefined-outer-name` (W0621)
-- 1x `global-variable-not-assigned` (W0602)
-- 1x `consider-using-f-string` (C0209)
+### ✅ Phase 8 - Misc Cleanup
+- Replaced lingering `global` usage with cached/holder patterns.
+- Converted broad `Exception` raises to `RuntimeError` and updated warning strings to f-strings.
+- Cleaned unused locals and ensured ROI destructuring only stores needed values.
+- Targeted check (`pylint --disable=all --enable=W0511,W0612,W0613,W0603,W0602,W0719,W0404,W0621,C0209`) now passes at 10.00/10.
 
 ### 📋 Phase 9 - CI bypass removal ✅
 All `continue-on-error` / `|| true` gates have been removed from `ci.yml` and `dependency-check.yml`. Expect lint + security jobs to fail loudly until the remaining issues are fixed.

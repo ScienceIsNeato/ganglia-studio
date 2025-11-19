@@ -15,7 +15,7 @@ import sys
 import threading
 import time
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 
 # Third-party imports
@@ -35,10 +35,19 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 torch.load = partial(torch.load, weights_only=True)
 
 whisper_lock = threading.Lock()
-_whisper_model = None
-_whisper_model_size = None
-_model_loading = False
-_model_loading_event = threading.Event()
+
+
+@dataclass
+class WhisperModelState:
+    """Track shared Whisper model state."""
+
+    model: whisper.Whisper | None = None
+    size: str | None = None
+    loading: bool = False
+    loading_event: threading.Event = field(default_factory=threading.Event)
+
+
+_whisper_state = WhisperModelState()
 
 
 def get_whisper_model(model_size: str = "small") -> whisper.Whisper:
@@ -50,58 +59,62 @@ def get_whisper_model(model_size: str = "small") -> whisper.Whisper:
     Returns:
         whisper.Whisper: The loaded model instance
     """
-    global _whisper_model, _whisper_model_size, _model_loading, _model_loading_event
-
     # Fast path - if model exists and is right size, return it
-    if _whisper_model is not None and _whisper_model_size == model_size:
+    if _whisper_state.model is not None and _whisper_state.size == model_size:
         # Clear model state before returning
-        if hasattr(_whisper_model, "decoder") and hasattr(_whisper_model.decoder, "_kv_cache"):
-            _whisper_model.decoder._kv_cache = {}
-        return _whisper_model
+        if hasattr(_whisper_state.model, "decoder") and hasattr(
+            _whisper_state.model.decoder, "_kv_cache"
+        ):
+            _whisper_state.model.decoder._kv_cache = {}
+        return _whisper_state.model
 
     # If another thread is loading the model, wait for it
-    if _model_loading:
+    if _whisper_state.loading:
         Logger.print_info("Waiting for Whisper model to be loaded by another thread...")
-        _model_loading_event.wait()
+        _whisper_state.loading_event.wait()
         # After waiting, check if the model is what we need
-        if _whisper_model is not None and _whisper_model_size == model_size:
+        if _whisper_state.model is not None and _whisper_state.size == model_size:
             # Clear model state before returning
-            if hasattr(_whisper_model, "decoder") and hasattr(_whisper_model.decoder, "_kv_cache"):
-                _whisper_model.decoder._kv_cache = {}
-            return _whisper_model
+            if hasattr(_whisper_state.model, "decoder") and hasattr(
+                _whisper_state.model.decoder, "_kv_cache"
+            ):
+                _whisper_state.model.decoder._kv_cache = {}
+            return _whisper_state.model
 
     # Slow path - need to load model
     with whisper_lock:
         # Double-check pattern
-        if _whisper_model is not None and _whisper_model_size == model_size:
+        if _whisper_state.model is not None and _whisper_state.size == model_size:
             # Clear model state before returning
-            if hasattr(_whisper_model, "decoder") and hasattr(_whisper_model.decoder, "_kv_cache"):
-                _whisper_model.decoder._kv_cache = {}
-            return _whisper_model
+            if hasattr(_whisper_state.model, "decoder") and hasattr(
+                _whisper_state.model.decoder, "_kv_cache"
+            ):
+                _whisper_state.model.decoder._kv_cache = {}
+            return _whisper_state.model
 
         # Mark that we're loading the model and clear any previous event
-        _model_loading = True
-        _model_loading_event.clear()
+        _whisper_state.loading = True
+        _whisper_state.loading_event.clear()
 
         try:
             # Load new model
-            _whisper_model = whisper.load_model(
+            _whisper_state.model = whisper.load_model(
                 model_size,
                 device="cpu",  # Force CPU usage
                 download_root=None,  # Use default download location
                 in_memory=True,  # Keep model in memory
             )
-            _whisper_model_size = model_size
+            _whisper_state.size = model_size
 
             # Initialize empty cache
-            if hasattr(_whisper_model, "decoder"):
-                _whisper_model.decoder._kv_cache = {}
+            if hasattr(_whisper_state.model, "decoder"):
+                _whisper_state.model.decoder._kv_cache = {}
 
-            return _whisper_model
+            return _whisper_state.model
         finally:
             # Always mark loading as complete and notify waiters
-            _model_loading = False
-            _model_loading_event.set()
+            _whisper_state.loading = False
+            _whisper_state.loading_event.set()
 
 
 @dataclass

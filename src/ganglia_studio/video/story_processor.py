@@ -248,23 +248,23 @@ def _submit_parallel_tasks(
     futures = []
 
     # Movie poster task
-    movie_poster_future = _submit_movie_poster_task(
+    _submit_movie_poster_task(
         executor, skip_generation, story_title, query_dispatcher, story, style, output_dir, futures
     )
 
     # Background music task
-    background_music_future = _submit_background_music_task(
+    _submit_background_music_task(
         executor, music_generator, config, output_dir, skip_generation, thread_id, futures
     )
 
     # Closing credits task
-    closing_credits_future = _submit_closing_credits_task(
+    _submit_closing_credits_task(
         executor, music_generator, config, story, output_dir, skip_generation,
         query_dispatcher, thread_id, futures
     )
 
     # Video segment tasks
-    segment_futures = _submit_segment_tasks(
+    _submit_segment_tasks(
         executor, story, total_segments, style, tts, config, skip_generation,
         query_dispatcher, output_dir, futures
     )
@@ -391,16 +391,14 @@ def _collect_task_results(futures, thread_prefix):
                     Logger.print_error(f"{thread_prefix}Closing credits generation failed")
 
             elif task_type == "segment":
-                i, segment_future = future
+                segment_index, segment_future = future
                 segment = segment_future.result()
                 if segment and segment[0]:
                     segments.append(segment[0])
                     segment_indices.append(segment[1])
                 else:
-                    Logger.print_error(
-                        f"{thread_prefix}Failed to process segment "
-                        f"{segment[1] if segment else 'unknown'}"
-                    )
+                    failed_index = segment[1] if segment else segment_index
+                    Logger.print_error(f"{thread_prefix}Failed to process segment {failed_index}")
 
         except Exception as e:
             Logger.print_error(f"{thread_prefix}Error processing task: {str(e)}")
@@ -545,7 +543,7 @@ def retry_on_rate_limit(func, *args, retries=5, wait_time=60, **kwargs):
                 time.sleep(wait_time)
             else:
                 raise e
-    raise Exception(
+    raise RuntimeError(
         f"Failed to complete {func.__name__} after {retries} attempts due to rate limiting."
     )
 

@@ -384,13 +384,13 @@ class StoryGenerationDriver:
             Logger.print_error(f"Traceback: {traceback.format_exc()}")
 
 
-# Singleton instance
-_instance = None
+# Singleton holder
+class _StoryGenerationDriverHolder:
+    instance: StoryGenerationDriver | None = None
 
 
 def get_story_generation_driver(query_dispatcher=None):
     """Get the singleton StoryGenerationDriver instance."""
-    global _instance
-    if _instance is None:
-        _instance = StoryGenerationDriver(query_dispatcher)
-    return _instance
+    if _StoryGenerationDriverHolder.instance is None:
+        _StoryGenerationDriverHolder.instance = StoryGenerationDriver(query_dispatcher)
+    return _StoryGenerationDriverHolder.instance
