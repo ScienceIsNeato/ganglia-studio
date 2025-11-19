@@ -683,7 +683,8 @@ def _determine_text_colors(first_frame, roi_x, roi_y, roi_width, roi_height):
     complement = tuple(255 - c for c in avg_bg_color)
     palette = get_vibrant_palette()
     color_diffs = [
-        sum(abs(c1 - c2) for c1, c2 in zip(complement, palette_color)) for palette_color in palette
+        sum(abs(c1 - c2) for c1, c2 in zip(complement, palette_color, strict=False))
+        for palette_color in palette
     ]
     text_color = palette[color_diffs.index(min(color_diffs))]
     stroke_color = tuple(c // 3 for c in text_color)

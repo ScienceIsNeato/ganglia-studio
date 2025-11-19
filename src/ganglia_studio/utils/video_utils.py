@@ -4,10 +4,13 @@
 import os
 import random
 import tempfile
+
 import cv2
 import numpy as np
 from PIL import Image
+
 from ganglia_studio.utils.ffmpeg_utils import run_ffmpeg_command
+
 
 def create_test_video(duration=5, size=(1920, 1080), color=None):
     """Create a simple colored background video with a silent audio track"""

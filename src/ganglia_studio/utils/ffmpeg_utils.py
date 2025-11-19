@@ -7,6 +7,7 @@ import queue
 import subprocess
 import threading
 import time
+from contextlib import suppress
 from functools import lru_cache
 
 import psutil
@@ -96,19 +97,15 @@ class FFmpegOperation(threading.Thread):
             with self.manager.lock:
                 if self in self.manager.active_operations:
                     self.manager.active_operations.remove(self)
-                    try:
+                    with suppress(queue.Empty):
                         self.manager.operation_queue.get_nowait()
-                    except queue.Empty:
-                        pass
         finally:
             # Remove self from active operations when done
             with self.manager.lock:
                 if self in self.manager.active_operations:
                     self.manager.active_operations.remove(self)
-                    try:
+                    with suppress(queue.Empty):
                         self.manager.operation_queue.get_nowait()
-                    except queue.Empty:
-                        pass
 
 
 class FFmpegThreadManager:
@@ -209,7 +206,7 @@ def run_ffmpeg_command(ffmpeg_cmd):
             Logger.print_info(
                 f"Running ffmpeg command with {thread_count} threads: {' '.join(cmd)}"
             )
-            result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = subprocess.run(cmd, check=True, capture_output=True)
             Logger.print_info(f"ffmpeg output: {result.stdout.decode('utf-8')}")
             return result
 

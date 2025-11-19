@@ -8,6 +8,7 @@ import requests
 from ganglia_common.logger import Logger
 from openai import OpenAI
 
+
 @lru_cache(maxsize=1)
 def get_openai_client():
     """Get or create the OpenAI client instance."""
@@ -44,18 +45,16 @@ def generate_filtered_story(context, style, story_title, query_dispatcher):
 
         # Then format it into the required JSON structure
         response = query_dispatcher.send_query(
-            (
-                "Format this filtered story into a JSON object with the style "
-                f"'{style}' and title '{story_title}':\n\n"
-                f"{filtered_content}\n\n"
-                "IMPORTANT: Return ONLY a JSON object in this exact format "
-                "with no other text before or after:\n"
-                "{\n"
-                '  "style": "<insert style here>",\n'
-                '  "title": "<insert title here>",\n'
-                '  "story": "<insert filtered story here>"\n'
-                "}"
-            )
+            "Format this filtered story into a JSON object with the style "
+            f"'{style}' and title '{story_title}':\n\n"
+            f"{filtered_content}\n\n"
+            "IMPORTANT: Return ONLY a JSON object in this exact format "
+            "with no other text before or after:\n"
+            "{\n"
+            '  "style": "<insert style here>",\n'
+            '  "title": "<insert title here>",\n'
+            '  "story": "<insert filtered story here>"\n'
+            "}"
         )
 
         # Parse the response to extract the filtered story

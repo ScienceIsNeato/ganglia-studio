@@ -136,7 +136,7 @@ def mix_audio_tracks(
 
         # Build filter complex for mixing
         inputs = []
-        for i, track in enumerate(tracks):
+        for track in tracks:
             inputs.extend(["-i", track])
 
         filter_parts = []

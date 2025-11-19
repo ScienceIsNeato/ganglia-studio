@@ -211,14 +211,14 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
 
             # For in-progress songs, estimate based on time
             # Typical generation takes about 2 minutes
-            TYPICAL_DURATION = 120  # seconds
+            typical_duration = 120  # seconds
 
             start_time = self._get_start_time(job_id)
             elapsed_time = time.time() - start_time
 
             # Calculate progress as a percentage of typical duration
             # Cap at 95% to avoid showing 100% before actually complete
-            progress = min(95.0, (elapsed_time / TYPICAL_DURATION) * 100)
+            progress = min(95.0, (elapsed_time / typical_duration) * 100)
 
             return status, progress
 

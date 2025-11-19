@@ -251,9 +251,8 @@ def create_evenly_distributed_timings(audio_path: str, text: str) -> list[WordTi
                 "default=noprint_wrappers=1:nokey=1",
                 audio_path,
             ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
             check=True,
+            capture_output=True,
         )
         total_duration = float(result.stdout)
 
@@ -417,9 +416,8 @@ def create_evenly_distributed_captions(
                 "default=noprint_wrappers=1:nokey=1",
                 audio_file,
             ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
             check=True,
+            capture_output=True,
         )
         total_duration = float(result.stdout)
 
@@ -474,9 +472,7 @@ def get_audio_duration(audio_file: str, thread_id: str = None) -> float:
             "default=noprint_wrappers=1:nokey=1",
             audio_file,
         ]
-        result = subprocess.run(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True
-        )
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         duration = float(result.stdout.strip())
 
         Logger.print_info(f"{thread_prefix}Audio duration: {duration:.2f} seconds")

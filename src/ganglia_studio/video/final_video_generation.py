@@ -403,9 +403,7 @@ def generate_closing_credits(
             song_with_lyrics_path,
         ]
         with subprocess_lock:  # Protect subprocess.run from gRPC fork issues
-            result = subprocess.run(
-                ffprobe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
-            )
+            result = subprocess.run(ffprobe_cmd, check=True, capture_output=True)
         duration = float(result.stdout.decode("utf-8").strip())
         Logger.print_info(f"{LOG_CLOSING_CREDITS_DURATION}: {duration}s")
 
@@ -509,7 +507,7 @@ def get_video_duration(video_path: str) -> float | None:
             video_path,
         ]
 
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        result = subprocess.run(cmd, check=True, capture_output=True)
 
         duration = float(result.stdout.decode().strip())
         return duration

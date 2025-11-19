@@ -552,7 +552,9 @@ def _collect_task_results(futures, thread_prefix):
 
 def _order_segments(segments, indices):
     """Order segments using their original indices."""
-    segments_with_indices = sorted(zip(segments, indices), key=lambda x: x[1])
+    segments_with_indices = sorted(
+        zip(segments, indices, strict=False), key=lambda x: x[1]
+    )
     return [segment for segment, _ in segments_with_indices]
 
 
