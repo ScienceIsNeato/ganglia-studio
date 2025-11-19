@@ -35,8 +35,13 @@ class TestGenerateMoviePoster(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         # Execute
-        result = generate_movie_poster(filtered_story, self.style, self.story_title,
-                                       self.query_dispatcher, output_dir=self.output_dir)
+        result = generate_movie_poster(
+            filtered_story,
+            self.style,
+            self.story_title,
+            query_dispatcher=self.query_dispatcher,
+            output_dir=self.output_dir,
+        )
 
         # Assert
         self.assertIsNotNone(result)
@@ -59,8 +64,13 @@ class TestGenerateMoviePoster(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         # Execute & Assert - function should return None on error, not raise
-        result = generate_movie_poster(filtered_story, self.style, self.story_title,
-                                      self.query_dispatcher, output_dir=self.output_dir)
+        result = generate_movie_poster(
+            filtered_story,
+            self.style,
+            self.story_title,
+            query_dispatcher=self.query_dispatcher,
+            output_dir=self.output_dir,
+        )
         self.assertIsNone(result, "Function should return None on DALL-E error")
 
 if __name__ == '__main__':

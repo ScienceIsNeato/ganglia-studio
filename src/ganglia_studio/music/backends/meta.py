@@ -177,7 +177,7 @@ class MetaMusicBackend(MusicBackend):
             else:
                 os.rename(temp_clip_path, final_path)
 
-            self._update_progress(job_id, "Complete", 100, final_path)
+            self._update_progress(job_id, "Complete", 100, output_path=final_path)
 
         except Exception as e:
             Logger.print_error(f"Generation failed: {str(e)}")
@@ -245,12 +245,22 @@ class MetaMusicBackend(MusicBackend):
         sf.write(temp_clip_path, audio_data.T, self.sample_rate)
         return temp_clip_path, final_path
 
-    def _create_looped_audio(self, temp_clip_path, final_path, duration_seconds, generation_duration):
+    def _create_looped_audio(
+        self,
+        temp_clip_path,
+        final_path,
+        duration_seconds,
+        generation_duration,
+    ):
         """Create looped audio with crossfade for extended duration."""
         num_loops = int(duration_seconds / generation_duration) + 1
         crossfade_duration = min(3, generation_duration / 4)
 
-        filter_str = self._build_crossfade_filter(num_loops, crossfade_duration, duration_seconds)
+        filter_str = self._build_crossfade_filter(
+            num_loops,
+            crossfade_duration,
+            duration_seconds,
+        )
         cmd = self._build_ffmpeg_loop_command(
             temp_clip_path, final_path, num_loops, filter_str
         )
@@ -273,7 +283,8 @@ class MetaMusicBackend(MusicBackend):
                 fade_str = f"[0:a][1:a]acrossfade=d={crossfade_duration}:c1=tri:c2=tri[f1];"
             else:
                 fade_str = (
-                    f"[f{i}][{i + 1}:a]acrossfade=d={crossfade_duration}:c1=tri:c2=tri[f{i + 1}];"
+                    f"[f{i}][{i + 1}:a]acrossfade=d={crossfade_duration}:c1=tri:"
+                    f"c2=tri[f{i + 1}];"
                 )
             filter_complex.append(fade_str)
 

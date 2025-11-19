@@ -6,7 +6,7 @@ from ganglia_studio.music.music_lib import MusicGenerator, _exponential_backoff
 from ganglia_studio.music.backends.meta import MetaMusicBackend
 from ganglia_studio.music.backends.suno_api_org import SunoApiOrgBackend
 from ganglia_studio.music.backends.foxai_suno import FoxAISunoBackend
-from ganglia_studio.video.config_loader import TTVConfig
+from ganglia_studio.video.config_loader import MusicOptions, TTVConfig
 from typing import Union
 from ganglia_common.logger import Logger
 
@@ -395,7 +395,7 @@ def test_backend_initialization_from_config(monkeypatch):
         style="test",
         story=[],
         title="test",
-        music_backend="meta"
+        music=MusicOptions(backend="meta"),
     )
     generator_meta = MusicGenerator(config=config_meta)
     assert isinstance(generator_meta.backend, MetaMusicBackend)
@@ -406,7 +406,7 @@ def test_backend_initialization_from_config(monkeypatch):
         style="test",
         story=[],
         title="test",
-        music_backend="suno"
+        music=MusicOptions(backend="suno"),
     )
     generator_suno = MusicGenerator(config=config_suno)
     assert isinstance(generator_suno.backend, SunoApiOrgBackend)

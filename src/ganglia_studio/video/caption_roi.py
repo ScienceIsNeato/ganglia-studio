@@ -77,7 +77,15 @@ def _calculate_roi_dimensions(cropped_frame, border_x, border_y):
     return min(roi_width, available_width), min(roi_height, available_height)
 
 
-def _locate_roi_position(cropped_frame, border_x, border_y, roi_width, roi_height, block_size):
+def _locate_roi_position(
+    cropped_frame,
+    *,
+    border_x,
+    border_y,
+    roi_width,
+    roi_height,
+    block_size,
+):
     """Locate ROI position based on activity map."""
     activity_map = calculate_activity_map(cropped_frame, block_size)
     blocks_h = cropped_frame.shape[0] // block_size
@@ -126,7 +134,12 @@ def find_roi_in_frame(frame, block_size=32):
     border_x, border_y = _compute_borders(cropped_frame)
     roi_width, roi_height = _calculate_roi_dimensions(cropped_frame, border_x, border_y)
     best_x, best_y = _locate_roi_position(
-        cropped_frame, border_x, border_y, roi_width, roi_height, block_size
+        cropped_frame,
+        border_x=border_x,
+        border_y=border_y,
+        roi_width=roi_width,
+        roi_height=roi_height,
+        block_size=block_size,
     )
     return (best_x + buffer_x, best_y + buffer_y, roi_width, roi_height)
 

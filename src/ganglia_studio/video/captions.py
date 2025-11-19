@@ -4,6 +4,7 @@ import os
 import random
 import subprocess
 import tempfile
+import textwrap
 import traceback
 import uuid
 from dataclasses import dataclass, field
@@ -524,6 +525,7 @@ def _calculate_word_clip_geometry(
     word: Word,
     cursor_pos: tuple[int, int],
     previous_word: Word | None,
+    *,
     roi_x: int,
     roi_y: int,
     roi_width: int,
@@ -583,13 +585,13 @@ def _create_word_clips(
         word,
         cursor_pos,
         previous_word,
-        roi_x,
-        roi_y,
-        roi_width,
-        roi_height,
-        shadow_offset,
-        max_font_size,
-        border_thickness,
+        roi_x=roi_x,
+        roi_y=roi_y,
+        roi_width=roi_width,
+        roi_height=roi_height,
+        shadow_offset=shadow_offset,
+        max_font_size=max_font_size,
+        border_thickness=border_thickness,
     )
 
     # Create outer shadow
@@ -736,6 +738,7 @@ def _collect_caption_words(
 
 def _create_text_clips_for_windows(
     windows: list[CaptionWindow],
+    *,
     roi: tuple[int, int, int, int],
     first_frame: np.ndarray,
     min_font_size: int,
@@ -767,6 +770,7 @@ def _create_text_clips_for_windows(
 def _export_captioned_video(
     context: DynamicCaptionContext,
     text_clips: list[TextClip],
+    *,
     input_video: str,
     output_path: str,
     temp_files: list[str],
@@ -834,8 +838,6 @@ def _export_captioned_video(
 
     Logger.print_info(f"Successfully added dynamic captions to video: {output_path}")
     return True
-
-
 def create_dynamic_captions(
     input_video: str,
     captions: list[CaptionEntry],
@@ -877,15 +879,21 @@ def create_dynamic_captions(
 
         text_clips = _create_text_clips_for_windows(
             windows,
-            context.roi,
-            context.first_frame,
-            min_font_size,
-            max_font_ratio,
-            border_thickness,
-            shadow_offset,
+            roi=context.roi,
+            first_frame=context.first_frame,
+            min_font_size=min_font_size,
+            max_font_ratio=max_font_ratio,
+            border_thickness=border_thickness,
+            shadow_offset=shadow_offset,
         )
 
-        if not _export_captioned_video(context, text_clips, input_video, output_path, temp_files):
+        if not _export_captioned_video(
+            context,
+            text_clips,
+            input_video=input_video,
+            output_path=output_path,
+            temp_files=temp_files,
+        ):
             return None
 
         return output_path
@@ -958,12 +966,21 @@ def create_static_captions(
         video_width = _get_video_width(input_video)
         max_chars_per_line = _calculate_max_chars(video_width, margin, font_size)
         drawtext_filters = _build_drawtext_filters(
-            captions, max_chars_per_line, position, margin, font_name, font_size, box_color
+            captions,
+            max_chars_per_line=max_chars_per_line,
+            position=position,
+            margin=margin,
+            font_name=font_name,
+            font_size=font_size,
+            box_color=box_color,
         )
         complete_filter = ",".join(drawtext_filters)
 
         if not _compose_static_caption_video(
-            input_video, output_path, complete_filter, temp_files
+            input_video,
+            output_path=output_path,
+            filter_graph=complete_filter,
+            temp_files=temp_files,
         ):
             return None
 
@@ -1018,6 +1035,7 @@ def _calculate_max_chars(video_width: int, margin: int, font_size: int) -> int:
 
 def _build_drawtext_filters(
     captions: list[CaptionEntry],
+    *,
     max_chars_per_line: int,
     position: str,
     margin: int,
@@ -1047,6 +1065,7 @@ def _build_drawtext_filters(
 
 def _compose_static_caption_video(
     input_video: str,
+    *,
     output_path: str,
     filter_graph: str,
     temp_files: list[str],
@@ -1106,6 +1125,4 @@ def _compose_static_caption_video(
     if not run_ffmpeg_command(combine_cmd):
         Logger.print_error("Failed to combine video with audio")
         return False
-
     return True
-

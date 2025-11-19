@@ -133,13 +133,12 @@ def test_thread_safe_model_loading(tmp_path):
 
     # Initialize outside try block to avoid UnboundLocalError in finally
     original_load_model = whisper.load_model
+    audio_alignment_module = ganglia_studio.video.audio_alignment
+    original_whisper_state = audio_alignment_module._whisper_state
 
     try:
-        # Reset global variables
-        ganglia_studio.video.audio_alignment._whisper_model = None
-        ganglia_studio.video.audio_alignment._whisper_model_size = None
-        ganglia_studio.video.audio_alignment._model_loading = False
-        ganglia_studio.video.audio_alignment._model_loading_event.clear()
+        # Reset shared Whisper model state
+        audio_alignment_module._whisper_state = audio_alignment_module.WhisperModelState()
 
         # Track model loads
         model_load_count = 0
@@ -171,5 +170,6 @@ def test_thread_safe_model_loading(tmp_path):
 
     finally:
         whisper.load_model = original_load_model
+        audio_alignment_module._whisper_state = original_whisper_state
         if os.path.exists(audio_path):
             os.remove(audio_path)

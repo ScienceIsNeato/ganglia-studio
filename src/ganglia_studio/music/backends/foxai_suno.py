@@ -253,7 +253,13 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
 
             enhanced_prompt = self._build_lyrical_prompt(actual_duration, style, title, lyrics)
             data = self._build_lyrical_request_data(
-                enhanced_prompt, model, title, tags, style, actual_duration, lyrics
+                enhanced_prompt,
+                model=model,
+                title=title,
+                tags=tags,
+                style=style,
+                duration=actual_duration,
+                lyrics=lyrics,
             )
 
             self._log_request_details(endpoint, data, lyrics_data)
@@ -300,7 +306,15 @@ class FoxAISunoBackend(MusicBackend, SunoInterface):
         return f"{enhanced_prompt} with these exact lyrics:\n{lyrics}"
 
     def _build_lyrical_request_data(
-        self, enhanced_prompt, model, title, tags, style, duration, lyrics
+        self,
+        enhanced_prompt,
+        *,
+        model,
+        title=None,
+        tags=None,
+        style="pop",
+        duration=None,
+        lyrics="",
     ):
         """Build request data for lyrical song generation."""
         return {

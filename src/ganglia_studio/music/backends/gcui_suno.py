@@ -30,10 +30,8 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
                         f"Failed to connect to Suno API: {response.status_code}"
                     )
                 quota_info = response.json()
-                Logger.print_info(
-                    "Connected to Suno API. Credits remaining: "
-                    f"{quota_info.get(credits_left, unknown)}"
-                )
+                remaining = quota_info.get("credits_left", "unknown")
+                Logger.print_info(f"Connected to Suno API. Credits remaining: {remaining}")
             except Exception as e:
                 Logger.print_error(f"Failed to initialize Suno API connection: {str(e)}")
                 # Don't raise here - let start_generation handle errors
@@ -78,11 +76,18 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
 
             if with_lyrics and story_text:
                 endpoint, data = self._build_lyrical_generation_request(
-                    enhanced_prompt, story_text, title, tags, wait_audio
+                    enhanced_prompt,
+                    story_text,
+                    title=title,
+                    tags=tags,
+                    wait_audio=wait_audio,
                 )
             else:
                 endpoint, data = self._build_instrumental_generation_request(
-                    enhanced_prompt, title, tags, wait_audio
+                    enhanced_prompt,
+                    title=title,
+                    tags=tags,
+                    wait_audio=wait_audio,
                 )
 
             return self._submit_gcui_generation_request(endpoint, data)
@@ -98,7 +103,15 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
             enhanced_prompt = f"{enhanced_prompt} titled '{title}'"
         return enhanced_prompt
 
-    def _build_lyrical_generation_request(self, enhanced_prompt, story_text, title, tags, wait_audio):
+    def _build_lyrical_generation_request(
+        self,
+        enhanced_prompt,
+        story_text,
+        *,
+        title=None,
+        tags=None,
+        wait_audio=False,
+    ):
         """Build request for lyrical music generation."""
         lyrics_response = requests.post(
             f"{self.api_base_url}/api/generate_lyrics",
@@ -121,7 +134,14 @@ class GcuiSunoBackend(MusicBackend, SunoInterface):
         endpoint = f"{self.api_base_url}/api/custom_generate"
         return endpoint, data
 
-    def _build_instrumental_generation_request(self, enhanced_prompt, title, tags, wait_audio):
+    def _build_instrumental_generation_request(
+        self,
+        enhanced_prompt,
+        *,
+        title=None,
+        tags=None,
+        wait_audio=False,
+    ):
         """Build request for instrumental music generation."""
         data = {
             "prompt": enhanced_prompt,

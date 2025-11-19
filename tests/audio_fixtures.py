@@ -135,10 +135,14 @@ def setup_dummy_whisper(monkeypatch) -> DummyWhisperModel:
         return dummy_model
 
     monkeypatch.setattr(audio_alignment_module.whisper, "load_model", load_model_stub)
-    monkeypatch.setattr(audio_alignment_module, "_whisper_model", dummy_model)
-    monkeypatch.setattr(audio_alignment_module, "_whisper_model_size", "small")
-    monkeypatch.setattr(audio_alignment_module, "_model_loading", False)
-    audio_alignment_module._model_loading_event.clear()  # pylint: disable=protected-access
+
+    patched_state = audio_alignment_module.WhisperModelState(
+        model=dummy_model,
+        size="small",
+        loading=False,
+    )
+    patched_state.loading_event.set()
+    monkeypatch.setattr(audio_alignment_module, "_whisper_state", patched_state)
 
     return dummy_model
 

@@ -104,7 +104,16 @@ def process_sentence(
     Logger.print_info(f"{thread_id} Processing sentence: {sentence}")
 
     filename = _generate_sentence_image(
-        i, sentence, context, style, skip_generation, query_dispatcher, config, output_dir, thread_id
+        i,
+        sentence,
+        context,
+        style,
+        total_images=total_images,
+        skip_generation=skip_generation,
+        query_dispatcher=query_dispatcher,
+        config=config,
+        output_dir=output_dir,
+        thread_id=thread_id,
     )
     if not filename:
         return None, i
@@ -113,7 +122,13 @@ def process_sentence(
     if not audio_path:
         return None, i
 
-    initial_segment_path = _create_initial_video_segment(i, filename, audio_path, output_dir, thread_id)
+    initial_segment_path = _create_initial_video_segment(
+        i,
+        filename,
+        audio_path,
+        output_dir,
+        thread_id,
+    )
     if not initial_segment_path:
         return None, i
 
@@ -121,12 +136,28 @@ def process_sentence(
     final_segment_path = os.path.join(output_dir, f"segment_{i}.mp4")
 
     return _add_captions_to_segment(
-        caption_style, initial_segment_path, final_segment_path, audio_path, sentence, i, thread_id
+        caption_style,
+        initial_segment_path,
+        final_segment_path,
+        audio_path=audio_path,
+        sentence=sentence,
+        index=i,
+        thread_id=thread_id,
     )
 
 
 def _generate_sentence_image(
-    i, sentence, context, style, skip_generation, query_dispatcher, config, output_dir, thread_id
+    i,
+    sentence,
+    context,
+    style,
+    *,
+    total_images: int,
+    skip_generation: bool,
+    query_dispatcher: Any | None,
+    config: TTVConfig | None,
+    output_dir: str,
+    thread_id: str,
 ):
     """Generate or load image for sentence."""
     if skip_generation:
@@ -138,6 +169,7 @@ def _generate_sentence_image(
         context,
         style,
         image_index=i,
+        total_images=total_images,
         query_dispatcher=query_dispatcher,
         preloaded_images_dir=preloaded_images_dir,
         thread_id=thread_id,
@@ -168,27 +200,53 @@ def _create_initial_video_segment(i, filename, audio_path, output_dir, thread_id
 
 
 def _add_captions_to_segment(
-    caption_style, initial_segment_path, final_segment_path, audio_path, sentence, i, thread_id
+    caption_style,
+    initial_segment_path,
+    final_segment_path,
+    *,
+    audio_path,
+    sentence,
+    index,
+    thread_id,
 ):
     """Add captions to video segment based on style."""
     if caption_style == "dynamic":
         return _add_dynamic_captions(
-            initial_segment_path, final_segment_path, audio_path, sentence, i, thread_id
+            initial_segment_path,
+            final_segment_path,
+            audio_path=audio_path,
+            sentence=sentence,
+            index=index,
+            thread_id=thread_id,
         )
-    return _add_static_captions(initial_segment_path, final_segment_path, sentence, i, thread_id)
+    return _add_static_captions(
+        initial_segment_path,
+        final_segment_path,
+        sentence=sentence,
+        index=index,
+        thread_id=thread_id,
+    )
 
 
-def _add_dynamic_captions(initial_segment_path, final_segment_path, audio_path, sentence, i, thread_id):
+def _add_dynamic_captions(
+    initial_segment_path,
+    final_segment_path,
+    *,
+    audio_path,
+    sentence,
+    index,
+    thread_id,
+):
     """Add dynamic word-level captions to video."""
     Logger.print_info(f"{thread_id} Adding dynamic captions to video segment.")
     try:
         captions = create_word_level_captions(audio_path, sentence)
         if not captions:
             Logger.print_error(f"{thread_id} Failed to create word-level captions")
-            return None, i
+            return None, index
     except Exception as e:
         Logger.print_error(f"{thread_id} Error creating word-level captions: {e}")
-        return None, i
+        return None, index
 
     with ffmpeg_thread_manager:
         captioned_path = create_dynamic_captions(
@@ -201,12 +259,21 @@ def _add_dynamic_captions(initial_segment_path, final_segment_path, audio_path, 
 
     if captioned_path:
         Logger.print_info(f"{thread_id} Successfully added dynamic captions")
-        return captioned_path, i
-    Logger.print_error(f"{thread_id} Failed to add captions, using raw video")
-    return initial_segment_path, i
+        return captioned_path, index
+    Logger.print_error(
+        f"{thread_id} Failed to add captions, using raw video"
+    )
+    return initial_segment_path, index
 
 
-def _add_static_captions(initial_segment_path, final_segment_path, sentence, i, thread_id):
+def _add_static_captions(
+    initial_segment_path,
+    final_segment_path,
+    *,
+    sentence,
+    index,
+    thread_id,
+):
     """Add static captions to video."""
     Logger.print_info(f"{thread_id} Adding static captions to video segment.")
     captions = [CaptionEntry(sentence, 0.0, float("inf"))]
@@ -220,19 +287,23 @@ def _add_static_captions(initial_segment_path, final_segment_path, sentence, i, 
 
     if captioned_path:
         Logger.print_info(f"{thread_id} Successfully added static captions")
-        return captioned_path, i
+        return captioned_path, index
     Logger.print_error(f"{thread_id} Failed to add captions, using raw video")
-    return initial_segment_path, i
+    return initial_segment_path, index
 
 
 def _needs_music(config) -> bool:
     """Check whether any music generation is configured."""
-    return bool(getattr(config, "background_music", None) or getattr(config, "closing_credits", None))
+    return bool(
+        getattr(config, "background_music", None)
+        or getattr(config, "closing_credits", None)
+    )
 
 
 def _submit_parallel_tasks(
     executor,
     story,
+    *,
     total_segments,
     style,
     tts,
@@ -249,31 +320,67 @@ def _submit_parallel_tasks(
 
     # Movie poster task
     _submit_movie_poster_task(
-        executor, skip_generation, story_title, query_dispatcher, story, style, output_dir, futures
+        executor,
+        skip_generation=skip_generation,
+        story_title=story_title,
+        query_dispatcher=query_dispatcher,
+        story=story,
+        style=style,
+        output_dir=output_dir,
+        futures=futures,
     )
 
     # Background music task
     _submit_background_music_task(
-        executor, music_generator, config, output_dir, skip_generation, thread_id, futures
+        executor,
+        music_generator=music_generator,
+        config=config,
+        output_dir=output_dir,
+        skip_generation=skip_generation,
+        thread_id=thread_id,
+        futures=futures,
     )
 
     # Closing credits task
     _submit_closing_credits_task(
-        executor, music_generator, config, story, output_dir, skip_generation,
-        query_dispatcher, thread_id, futures
+        executor,
+        music_generator=music_generator,
+        config=config,
+        story=story,
+        output_dir=output_dir,
+        skip_generation=skip_generation,
+        query_dispatcher=query_dispatcher,
+        thread_id=thread_id,
+        futures=futures,
     )
 
     # Video segment tasks
     _submit_segment_tasks(
-        executor, story, total_segments, style, tts, config, skip_generation,
-        query_dispatcher, output_dir, futures
+        executor,
+        story,
+        total_segments=total_segments,
+        style=style,
+        tts=tts,
+        config=config,
+        skip_generation=skip_generation,
+        query_dispatcher=query_dispatcher,
+        output_dir=output_dir,
+        futures=futures,
     )
 
     return futures
 
 
 def _submit_movie_poster_task(
-    executor, skip_generation, story_title, query_dispatcher, story, style, output_dir, futures
+    executor,
+    *,
+    skip_generation,
+    story_title,
+    query_dispatcher,
+    story,
+    style,
+    output_dir,
+    futures,
 ):
     """Submit movie poster generation task."""
     if not skip_generation and story_title and query_dispatcher:
@@ -292,7 +399,14 @@ def _submit_movie_poster_task(
 
 
 def _submit_background_music_task(
-    executor, music_generator, config, output_dir, skip_generation, thread_id, futures
+    executor,
+    *,
+    music_generator,
+    config,
+    output_dir,
+    skip_generation,
+    thread_id,
+    futures,
 ):
     """Submit background music generation task."""
     if music_generator and hasattr(config, "background_music") and config.background_music:
@@ -309,8 +423,16 @@ def _submit_background_music_task(
 
 
 def _submit_closing_credits_task(
-    executor, music_generator, config, story, output_dir, skip_generation,
-    query_dispatcher, thread_id, futures
+    executor,
+    *,
+    music_generator,
+    config,
+    story,
+    output_dir,
+    skip_generation,
+    query_dispatcher,
+    thread_id,
+    futures,
 ):
     """Submit closing credits generation task."""
     if music_generator and hasattr(config, "closing_credits") and config.closing_credits:
@@ -334,8 +456,17 @@ def _submit_closing_credits_task(
 
 
 def _submit_segment_tasks(
-    executor, story, total_segments, style, tts, config, skip_generation,
-    query_dispatcher, output_dir, futures
+    executor,
+    story,
+    *,
+    total_segments,
+    style,
+    tts,
+    config,
+    skip_generation,
+    query_dispatcher,
+    output_dir,
+    futures,
 ):
     """Submit video segment processing tasks."""
     segment_futures = []
@@ -476,19 +607,22 @@ def process_story(
             futures = _submit_parallel_tasks(
                 executor,
                 story,
-                total_segments,
-                style,
-                tts,
-                config,
-                skip_generation,
-                query_dispatcher,
-                story_title,
-                output_dir,
-                thread_id,
-                music_generator,
+                total_segments=total_segments,
+                style=style,
+                tts=tts,
+                config=config,
+                skip_generation=skip_generation,
+                query_dispatcher=query_dispatcher,
+                story_title=story_title,
+                output_dir=output_dir,
+                thread_id=thread_id,
+                music_generator=music_generator,
             )
 
-            task_results = _collect_task_results(futures, thread_prefix)
+            task_results = _collect_task_results(
+                futures,
+                thread_prefix,
+            )
 
             if not task_results.segments:
                 Logger.print_error(f"{thread_prefix}All segments failed to process")
@@ -499,7 +633,8 @@ def process_story(
             )
 
             Logger.print_info(
-                f"{thread_prefix}Successfully processed {len(ordered_segments)}/{total_segments} segments"
+                f"{thread_prefix}Successfully processed "
+                f"{len(ordered_segments)}/{total_segments} segments"
             )
 
         return (

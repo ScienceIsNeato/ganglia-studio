@@ -249,6 +249,7 @@ def _apply_background_music(main_video_path, music_path, output_dir):
 
 def _append_closing_credits(
     base_video_path,
+    *,
     song_with_lyrics_path,
     movie_poster_path,
     output_dir,
@@ -328,11 +329,11 @@ def assemble_final_video(
         final_output_path = _apply_background_music(main_video_path, music_path, output_dir)
         final_output_path = _append_closing_credits(
             final_output_path,
-            song_with_lyrics_path,
-            movie_poster_path,
-            output_dir,
-            config,
-            closing_credits_lyrics,
+            song_with_lyrics_path=song_with_lyrics_path,
+            movie_poster_path=movie_poster_path,
+            output_dir=output_dir,
+            config=config,
+            closing_credits_lyrics=closing_credits_lyrics,
         )
 
         # Standardize the name of the final video to final_video.mp4

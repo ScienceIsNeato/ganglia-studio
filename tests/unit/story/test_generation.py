@@ -64,7 +64,13 @@ class TestStoryGeneration(unittest.TestCase):
         })
 
         with patch('ganglia_studio.video.story_generation.save_image_without_caption') as mock_save:
-            result = generate_movie_poster(filtered_story, self.style, self.story_title, self.query_dispatcher, output_dir=self.output_dir)
+            result = generate_movie_poster(
+                filtered_story,
+                self.style,
+                self.story_title,
+                query_dispatcher=self.query_dispatcher,
+                output_dir=self.output_dir,
+            )
 
             self.assertIsNotNone(result)
             mock_client.images.generate.assert_called_once_with(
@@ -82,9 +88,9 @@ class TestStoryGeneration(unittest.TestCase):
 
         result = filter_text(
             "A robot learns about emotions",
-            self.context,
-            self.style,
-            self.query_dispatcher
+            context=self.context,
+            style=self.style,
+            query_dispatcher=self.query_dispatcher,
         )
 
         self.assertIn("text", result)
@@ -103,7 +109,8 @@ class TestStoryGeneration(unittest.TestCase):
         with patch('builtins.open', unittest.mock.mock_open()) as mock_file:
             save_image_without_caption("http://example.com/image.png", test_filename)
             mock_get.assert_called_once_with("http://example.com/image.png", timeout=30)
-            mock_file.assert_called_once_with(test_filename, 'wb')
+            mock_file.assert_any_call(test_filename, 'wb')
+            mock_file().write.assert_any_call(b"fake image content")
 
 if __name__ == '__main__':
     unittest.main()

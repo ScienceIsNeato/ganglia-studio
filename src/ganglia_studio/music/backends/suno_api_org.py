@@ -33,12 +33,10 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
 
     def _make_api_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
         """Make an API request with retries."""
-        # Set default timeout if not provided
-        if 'timeout' not in kwargs:
-            kwargs['timeout'] = 30
+        timeout = kwargs.pop("timeout", 30)
 
         def _request():
-            response = requests.request(method, endpoint, **kwargs)
+            response = requests.request(method, endpoint, timeout=timeout, **kwargs)
             if response.status_code == 401:
                 Logger.print_warning("Authentication failed (401) - will retry in a moment...")
                 time.sleep(2)  # Add a minimum delay before retry
@@ -73,7 +71,13 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
                 return None
 
             data = self._build_request_data(
-                enhanced_prompt, model, with_lyrics, story_text, use_custom_mode, title, tags
+                enhanced_prompt,
+                model=model,
+                with_lyrics=with_lyrics,
+                story_text=story_text,
+                use_custom_mode=use_custom_mode,
+                title=title,
+                tags=tags,
             )
 
             return self._submit_generation_request(data)
@@ -116,16 +120,44 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
         return True
 
     def _build_request_data(
-        self, enhanced_prompt, model, with_lyrics, story_text, use_custom_mode, title, tags
+        self,
+        enhanced_prompt,
+        *,
+        model,
+        with_lyrics,
+        story_text=None,
+        use_custom_mode=False,
+        title=None,
+        tags=None,
     ):
         """Build API request data based on parameters."""
         if with_lyrics and story_text:
             return self._build_lyrical_data(
-                enhanced_prompt, model, story_text, use_custom_mode, title, tags
+                enhanced_prompt,
+                model=model,
+                story_text=story_text,
+                use_custom_mode=use_custom_mode,
+                title=title,
+                tags=tags,
             )
-        return self._build_instrumental_data(enhanced_prompt, model, use_custom_mode, title, tags)
+        return self._build_instrumental_data(
+            enhanced_prompt,
+            model=model,
+            use_custom_mode=use_custom_mode,
+            title=title,
+            tags=tags,
+        )
 
-    def _build_lyrical_data(self, enhanced_prompt, model, story_text, use_custom_mode, title, tags):
+    def _build_lyrical_data(
+        self,
+        enhanced_prompt,
+        *,
+        model,
+        story_text,
+        use_custom_mode=False,
+        title=None,
+        tags=None,
+    ):
         """Build request data for lyrical generation."""
         base_data = {
             "prompt": enhanced_prompt[:3000],
@@ -140,7 +172,15 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             base_data["title"] = title[:80]
         return base_data
 
-    def _build_instrumental_data(self, enhanced_prompt, model, use_custom_mode, title, tags):
+    def _build_instrumental_data(
+        self,
+        enhanced_prompt,
+        *,
+        model,
+        use_custom_mode=False,
+        title=None,
+        tags=None,
+    ):
         """Build request data for instrumental generation."""
         prompt_limit = 3000 if use_custom_mode else 400
         base_data = {
@@ -187,17 +227,17 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
 
     def _handle_insufficient_credits(self, response_data):
         """Handle insufficient credits error."""
-        warning_msg = f"""
-╔════════════════════════════════════════════════════════════════════╗
-║                       INSUFFICIENT CREDITS                          ║
-║                                                                    ║
-║  Your Suno API account has run out of credits.                    ║
-║  Please top up your credits to continue generating music.          ║
-║  Will retry after delay.                                          ║
-║                                                                    ║
-║  Error: {response_data.get("msg")}                                                      ║
-╚════════════════════════════════════════════════════════════════════╝
-"""
+        warning_msg = (
+            "╔══════════════════════════════════════════════════════════════╗\n"
+            "║                       INSUFFICIENT CREDITS                    ║\n"
+            "║                                                              ║\n"
+            "║  Your Suno API account is out of credits.                    ║\n"
+            "║  Please top up to continue generating music.                 ║\n"
+            "║  Will retry after delay.                                     ║\n"
+            "║                                                              ║\n"
+            f"║  Error: {response_data.get('msg')}                           ║\n"
+            "╚══════════════════════════════════════════════════════════════╝"
+        )
         Logger.print_warning(warning_msg)
 
     def check_progress(self, job_id: str) -> tuple[str, float]:
@@ -229,7 +269,13 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
             base_progress = min(99.0, (elapsed / expected_duration) * 100)
             time_status = f"[{int(elapsed)}s/{expected_duration}s]"
 
-            return self._interpret_status(status, generation_data, title, time_status, base_progress)
+            return self._interpret_status(
+                status,
+                generation_data,
+                title=title,
+                time_status=time_status,
+                base_progress=base_progress,
+            )
 
         except Exception as e:
             Logger.print_error(f"Error checking progress: {str(e)}")
@@ -243,7 +289,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
         except (json.JSONDecodeError, KeyError, TypeError):
             return "Untitled"
 
-    def _interpret_status(self, status, generation_data, title, time_status, base_progress):
+    def _interpret_status(self, status, generation_data, *, title, time_status, base_progress):
         """Interpret API status and return progress tuple."""
         status_map = {
             "PENDING": (f"{title} - Initializing {time_status}", min(20.0, base_progress)),
@@ -259,7 +305,12 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
         }
 
         if status in ["SUCCESS", "FIRST_SUCCESS"]:
-            return self._check_success_state(status, generation_data, title, time_status)
+            return self._check_success_state(
+                status,
+                generation_data,
+                title=title,
+                time_status=time_status,
+            )
 
         if status in status_map:
             return status_map[status]
@@ -267,7 +318,7 @@ class SunoApiOrgBackend(MusicBackend, SunoInterface):
         Logger.print_warning(f"Unexpected status '{status}' received from API")
         return f"{title} - {status.lower()} {time_status}", base_progress
 
-    def _check_success_state(self, status, generation_data, title, time_status):
+    def _check_success_state(self, status, generation_data, *, title, time_status):
         """Check if SUCCESS state has audio URL ready."""
         generation_response = generation_data.get("response") or {}
         suno_data = generation_response.get("sunoData", [])

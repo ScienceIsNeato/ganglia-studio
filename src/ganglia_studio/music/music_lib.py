@@ -205,7 +205,14 @@ class MusicGenerator:
         """
         try:
             job_id = self._start_backend_generation(
-                backend, prompt, with_lyrics, title, tags, duration, story_text, query_dispatcher
+                backend,
+                prompt,
+                with_lyrics=with_lyrics,
+                title=title,
+                tags=tags,
+                duration=duration,
+                story_text=story_text,
+                query_dispatcher=query_dispatcher,
             )
             if not job_id:
                 return None
@@ -224,7 +231,16 @@ class MusicGenerator:
             return None
 
     def _start_backend_generation(
-        self, backend, prompt, with_lyrics, title, tags, duration, story_text, query_dispatcher
+        self,
+        backend,
+        prompt,
+        *,
+        with_lyrics: bool = False,
+        title: str | None = None,
+        tags: list[str] | None = None,
+        duration: int | None = None,
+        story_text: str | None = None,
+        query_dispatcher: Any | None = None,
     ):
         """Start generation with the backend."""
         job_id = backend.start_generation(
@@ -446,7 +462,9 @@ class MusicGenerator:
         # Generate music synchronously within this thread
         result = self.generate_instrumental(
             prompt=prompt,
-            duration=target_duration if target_duration is not None else self.MIN_BACKGROUND_DURATION,
+            duration=(
+                target_duration if target_duration is not None else self.MIN_BACKGROUND_DURATION
+            ),
             output_path=output_path,
         )
 

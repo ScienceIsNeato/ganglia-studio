@@ -19,7 +19,7 @@ import pytest
 
 # Local imports
 from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
-from ganglia_studio.video.config_loader import TTVConfig, MusicConfig
+from ganglia_studio.video.config_loader import MusicConfig, MusicOptions, TTVConfig
 from ganglia_studio.video.story_processor import process_story
 from ganglia_common.utils.file_utils import get_tempdir
 
@@ -102,16 +102,12 @@ class TestStoryProcessor(unittest.TestCase):
             story=["Test story line 1", "Test story line 2"],
             title="Test Title",
             caption_style="static",
-            background_music=MusicConfig(
-                file=None,
-                prompt="Generate background music"
-            ),
-            closing_credits=MusicConfig(
-                file=os.path.join(self.temp_dir, "test_credits.mp3"),
-                prompt=None
+            music=MusicOptions(
+                backend="suno",
+                background=MusicConfig(prompt="Generate background music"),
+                closing=MusicConfig(file=os.path.join(self.temp_dir, "test_credits.mp3")),
             ),
             preloaded_images_dir=None,
-            music_backend="suno"
         )
 
         # Mock background music generation
@@ -200,16 +196,12 @@ class TestStoryProcessor(unittest.TestCase):
             story=["Test story line 1", "Test story line 2"],
             title="Test Title",
             caption_style="static",
-            background_music=MusicConfig(
-                file=None,
-                prompt="Generate background music"
-            ),
-            closing_credits=MusicConfig(
-                file=None,
-                prompt="Generate closing credits"
+            music=MusicOptions(
+                backend="suno",
+                background=MusicConfig(prompt="Generate background music"),
+                closing=MusicConfig(prompt="Generate closing credits"),
             ),
             preloaded_images_dir=None,
-            music_backend="suno"
         )
 
         # Mock background music generation
@@ -301,16 +293,12 @@ class TestStoryProcessor(unittest.TestCase):
             story=["Test story line 1", "Test story line 2"],
             title="Test Title",
             caption_style="static",
-            background_music=MusicConfig(
-                file=None,
-                prompt="Generate background music"
-            ),
-            closing_credits=MusicConfig(
-                file=None,
-                prompt="Generate closing credits with lyrics"
+            music=MusicOptions(
+                backend="suno",
+                background=MusicConfig(prompt="Generate background music"),
+                closing=MusicConfig(prompt="Generate closing credits with lyrics"),
             ),
             preloaded_images_dir=None,
-            music_backend="suno"
         )
 
         # Patch the MusicGenerator to return our mock
