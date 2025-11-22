@@ -11,7 +11,6 @@ import pytest
 # Skip entire module - requires ganglia_core which is not yet fully set up
 pytestmark = pytest.mark.skip(reason="Requires ganglia_core setup - deferred until ganglia-core repository is ready")
 
-import tempfile
 import json
 import shutil
 from unittest.mock import MagicMock, patch
@@ -21,16 +20,11 @@ import logging
 # Commented out until ganglia_core is ready
 # from ganglia_core.ganglia import initialize_components, load_config
 # from ganglia_core.conversation import Conversation
-from ganglia_studio.story.story_generation_driver import StoryGenerationDriver, get_story_generation_driver
 from ganglia_common.pubsub import get_pubsub, Event, EventType
 from ganglia_common.utils.file_utils import get_tempdir
 from tests.test_helpers import (
-    validate_audio_video_durations,
-    validate_final_video_path,
-    validate_total_duration,
     validate_segment_count,
     validate_background_music,
-    get_output_dir_from_logs
 )
 
 # Set up logging
@@ -116,7 +110,6 @@ class MockTTS:
         """Mock implementation of play_speech_response."""
         # Do nothing in the mock
         logger.debug(f"MockTTS playing audio file: {audio_file}, suppress={suppress_text_output}")
-        pass
 
     def set_voice_id(self, voice_id):
         """Set the voice ID for the TTS service."""
@@ -557,9 +550,6 @@ def test_ttv_conversation_flow():
 
                 # Verify the TTV process completed successfully
                 assert os.path.exists(ttv_output_path), f"Output video does not exist at {ttv_output_path}"
-
-                # Get the output directory
-                output_dir = os.path.dirname(ttv_output_path)
 
                 # Validate segment count - pass the correct config_path
                 validate_segment_count(output_str, config_path)

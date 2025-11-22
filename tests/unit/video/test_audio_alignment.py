@@ -6,11 +6,7 @@ import threading
 import pytest
 import whisper
 
-from ganglia_studio.video.audio_alignment import (
-    align_words_with_audio,
-    create_word_level_captions,
-)
-import ganglia_studio.video.audio_alignment
+import ganglia_studio.video.audio_alignment as audio_alignment_module
 from tests.audio_fixtures import (
     CLOSING_CREDITS_LYRICS,
     generate_dummy_tts_audio,
@@ -23,7 +19,7 @@ def test_word_alignment(tmp_path):
     audio_path = generate_dummy_tts_audio(test_text, tmp_path)
 
     # Test word alignment
-    word_timings = align_words_with_audio(audio_path, test_text)
+    word_timings = audio_alignment_module.align_words_with_audio(audio_path, test_text)
     assert word_timings is not None, "Failed to generate word timings"
     assert len(word_timings) > 0, "No word timings generated"
 
@@ -39,7 +35,7 @@ def test_caption_generation_from_audio(tmp_path):
     test_text = "Testing caption generation from audio file"
     audio_path = generate_dummy_tts_audio(test_text, tmp_path)
 
-    captions = create_word_level_captions(audio_path, test_text)
+    captions = audio_alignment_module.create_word_level_captions(audio_path, test_text)
     assert captions is not None, "Failed to generate captions"
     assert len(captions) > 0, "No captions generated"
 
@@ -60,7 +56,10 @@ def test_closing_credits_with_music(tmp_path):
     # The actual transcription is mocked via DummyWhisperModel but we keep the API call for parity
     model.transcribe(music_path, language="en", word_timestamps=True, fp16=False)
 
-    word_timings = align_words_with_audio(music_path, transcribed_text)
+    word_timings = audio_alignment_module.align_words_with_audio(
+        music_path,
+        transcribed_text,
+    )
     assert word_timings is not None, "Failed to generate word timings"
     assert len(word_timings) > 150, "Expected at least 150 words in the lyrics sample"
 
@@ -88,7 +87,11 @@ def _test_alignment_with_model(model_size: str, tmp_path) -> tuple[set[str], set
 
     audio_path = generate_dummy_tts_audio(text, tmp_path)
 
-    captions = create_word_level_captions(audio_path, text, model_name=model_size)
+    captions = audio_alignment_module.create_word_level_captions(
+        audio_path,
+        text,
+        model_name=model_size,
+    )
     assert captions is not None, "Failed to create word-level captions"
 
     text_words = set(word.strip().lower() for word in text.split())
@@ -133,7 +136,6 @@ def test_thread_safe_model_loading(tmp_path):
 
     # Initialize outside try block to avoid UnboundLocalError in finally
     original_load_model = whisper.load_model
-    audio_alignment_module = ganglia_studio.video.audio_alignment
     original_whisper_state = audio_alignment_module._whisper_state
 
     try:
@@ -152,7 +154,11 @@ def test_thread_safe_model_loading(tmp_path):
 
         # Create two threads that will try to load the model simultaneously
         def thread_func():
-            create_word_level_captions(audio_path, test_text, thread_id=threading.current_thread().name)
+            audio_alignment_module.create_word_level_captions(
+                audio_path,
+                test_text,
+                thread_id=threading.current_thread().name,
+            )
 
         thread1 = threading.Thread(name="Thread1", target=thread_func)
         thread2 = threading.Thread(name="Thread2", target=thread_func)

@@ -25,7 +25,7 @@ def check_service_available():
         backend = FoxAISunoBackend()
         response = requests.get(f"{backend.api_base_url}/gateway/query?ids=test", headers=backend.headers)
         return response.status_code != 404
-    except:
+    except Exception:
         return False
 
 @pytest.mark.costly

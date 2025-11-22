@@ -3,7 +3,6 @@
 import unittest
 import os
 
-import pytest
 from ganglia_studio.video.config_loader import load_input, TTVConfig, MusicConfig
 import json
 

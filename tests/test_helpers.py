@@ -36,7 +36,6 @@ from ganglia_studio.video.log_messages import (
 )
 
 from ganglia_studio.utils.ffmpeg_utils import run_ffmpeg_command
-import sys
 
 logger = logging.getLogger(__name__)
 

@@ -117,8 +117,8 @@ All `continue-on-error` / `|| true` gates have been removed from `ci.yml` and `d
 1. ✅ Full pylint run (command above) — 10.00/10, no findings.
 2. ✅ Targeted regressions: `pytest tests/unit/video/test_captions.py tests/unit/video/test_caption_roi.py tests/unit/story/test_processor.py -q` → 20 passed.
 3. ✅ Full sweep: `pytest tests/unit -v` → 101 passed (0 failed).
-4. ⏳ Stage + commit all lint + test fixes.
-5. Push branch, then `python cursor-rules/scripts/pr_status.py --watch <PR#>`.
+4. ✅ Stage + commit lint/test fixes (`6d1e150 fix: resolve CI lint failures`).
+5. 🔄 Push complete; running `python3 ${AGENT_HOME}/cursor-rules/scripts/pr_status.py 1` to monitor CI.
 
 ## Commands Reference
 

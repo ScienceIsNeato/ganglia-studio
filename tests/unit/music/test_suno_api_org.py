@@ -1,6 +1,5 @@
 """Unit tests for the SunoApi.org backend implementation."""
 
-import os
 import json
 from unittest.mock import patch, MagicMock, mock_open
 import pytest

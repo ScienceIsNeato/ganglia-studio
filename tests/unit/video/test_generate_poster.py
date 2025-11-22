@@ -5,7 +5,6 @@ Tests for the movie poster generation functionality.
 import unittest
 from unittest.mock import Mock, MagicMock, patch
 import json
-import pytest
 from ganglia_studio.video.story_generation import generate_movie_poster
 
 class TestGenerateMoviePoster(unittest.TestCase):

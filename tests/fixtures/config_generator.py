@@ -2,7 +2,6 @@
 
 import json
 import os
-from typing import Dict, Any
 from query_dispatch import ChatGPTQueryDispatcher
 from logger import Logger
 

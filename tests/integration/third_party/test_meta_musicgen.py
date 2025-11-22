@@ -67,7 +67,6 @@ def test_meta_musicgen_generation():
         # Verify the output
         assert audio_path is not None
         assert audio_path.endswith(".wav")
-        return audio_path
 
     except (RuntimeError, IOError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")
@@ -100,7 +99,6 @@ def test_meta_musicgen_with_duration():
         # Verify the output
         assert audio_path is not None
         assert audio_path.endswith(".wav")
-        return audio_path
 
     except (RuntimeError, IOError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")
@@ -133,7 +131,6 @@ def test_meta_musicgen_with_seed():
         # Verify the output
         assert audio_path is not None
         assert audio_path.endswith(".wav")
-        return audio_path
 
     except (RuntimeError, IOError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")
@@ -167,7 +164,6 @@ def test_meta_musicgen_with_duration_and_seed():
         # Verify the output
         assert audio_path is not None
         assert audio_path.endswith(".wav")
-        return audio_path
 
     except (RuntimeError, IOError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")

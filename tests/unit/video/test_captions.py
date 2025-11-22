@@ -11,13 +11,8 @@ This module contains tests for caption generation functionality including:
 # pylint: disable=no-member,unused-import,unused-variable,import-outside-toplevel
 
 import os
-import tempfile
-import random
-
 import cv2
-import numpy as np
 import pytest
-from PIL import Image
 
 from ganglia_common.logger import Logger
 from ganglia_common.utils.file_utils import get_tempdir
@@ -709,6 +704,7 @@ def test_deterministic_color_selection():
                 max_font_ratio=1.5
             )
 
+            assert result_path is not None, "Failed to create verification video"
             # Get colors and verify they match the first run
             text_color, _ = get_text_colors_from_video(output_path)
             assert text_color is not None, "Failed to extract text color from video"

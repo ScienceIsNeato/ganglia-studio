@@ -7,6 +7,13 @@ like TTS (Text-to-Speech) based on user preferences or configuration.
 from ganglia_common.tts.google_tts import GoogleTTS, TextToSpeech
 from ganglia_common.tts.openai_tts import OpenAITTS
 
+from ganglia_studio.interface.constants import (
+    GOOGLE_TTS_SERVICE,
+    OPENAI_DEFAULT_VOICE,
+    OPENAI_TTS_SERVICE,
+    SUPPORTED_TTS_SERVICES,
+)
+
 
 def parse_tts_interface(tts_interface: str, apply_effects: bool = False) -> TextToSpeech:
     """Parse TTS interface string and return appropriate TTS implementation.
@@ -26,11 +33,12 @@ def parse_tts_interface(tts_interface: str, apply_effects: bool = False) -> Text
         >>> tts = parse_tts_interface("openai")
         >>> tts = parse_tts_interface("google", apply_effects=True)
     """
-    if tts_interface.lower() == "google":
+    normalized = tts_interface.lower()
+    if normalized == GOOGLE_TTS_SERVICE:
         return GoogleTTS(apply_effects=apply_effects)
-    if tts_interface.lower() == "openai":
-        return OpenAITTS(voice="onyx")  # Deep voice similar to GANGLIA's personality
+    if normalized == OPENAI_TTS_SERVICE:
+        return OpenAITTS(voice=OPENAI_DEFAULT_VOICE)
     raise ValueError(
         f"Invalid TTS interface provided: '{tts_interface}'. "
-        "Available options: 'google', 'openai'"
+        f"Available options: {', '.join(SUPPORTED_TTS_SERVICES)}"
     )

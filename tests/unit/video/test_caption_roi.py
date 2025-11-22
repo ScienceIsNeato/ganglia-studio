@@ -1,7 +1,6 @@
 """Tests for caption ROI detection functionality."""
 
 import numpy as np
-import pytest
 from ganglia_studio.video.caption_roi import find_roi_in_frame
 from ganglia_studio.video.color_utils import get_contrasting_color
 

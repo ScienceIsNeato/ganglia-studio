@@ -5,10 +5,7 @@ the process of gathering information for text-to-video generation.
 """
 
 import unittest
-import os
-import json
 import tempfile
-import pytest
 from unittest.mock import MagicMock, patch
 
 from ganglia_studio.story.story_generation_driver import (

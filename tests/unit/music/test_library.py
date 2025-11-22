@@ -18,6 +18,7 @@ def temp_output_dir():
 
 class MockSunoBackend(SunoApiOrgBackend):
     def __init__(self, should_fail=False, fail_count=None):
+        super().__init__()
         self.should_fail = should_fail
         self.fail_count = fail_count  # Number of times to fail before succeeding
         self.attempts = 0
@@ -57,6 +58,7 @@ class MockSunoBackend(SunoApiOrgBackend):
 
 class MockMetaBackend(MetaMusicBackend):
     def __init__(self):
+        super().__init__()
         self.start_generation_called = False
         self.check_progress_called = False
         self.get_result_called = False
@@ -75,6 +77,7 @@ class MockMetaBackend(MetaMusicBackend):
 
 class DurationTestBackend(SunoApiOrgBackend):
     def __init__(self):
+        super().__init__()
         self.last_duration = None
         self.start_generation_called = False
         self.check_progress_called = False
@@ -95,6 +98,7 @@ class DurationTestBackend(SunoApiOrgBackend):
 
 class ErrorTestBackend(SunoApiOrgBackend):
     def __init__(self, error_type=RuntimeError):
+        super().__init__()
         self.error_type = error_type
         self.start_generation_called = False
         self.check_progress_called = False
@@ -114,6 +118,7 @@ class ErrorTestBackend(SunoApiOrgBackend):
 
 class ThreadTestBackend(SunoApiOrgBackend):
     def __init__(self):
+        super().__init__()
         self.start_generation_called = False
         self.check_progress_called = False
         self.get_result_called = False
@@ -132,6 +137,7 @@ class ThreadTestBackend(SunoApiOrgBackend):
 
 class RetryTestBackend(SunoApiOrgBackend):
     def __init__(self, error_sequence):
+        super().__init__()
         self.error_sequence = error_sequence
         self.attempts = 0
         self.start_generation_called = False
@@ -282,6 +288,7 @@ def test_instrumental_generation_string_result():
     class StringResultGenerator(MusicGenerator):
         def __init__(self):
             """Override to avoid initializing real backends."""
+            super().__init__(backend=MockSunoBackend())
             self.backend = None
             self.fallback_backend = None
 
@@ -306,6 +313,7 @@ def test_closing_credits_string_result():
     class StringResultGenerator(MusicGenerator):
         def __init__(self):
             """Override to avoid initializing real backends."""
+            super().__init__(backend=MockSunoBackend())
             self.backend = None
             self.fallback_backend = None
 
@@ -330,6 +338,7 @@ def test_output_path_handling():
     """Test that output paths are correctly handled when copying files."""
     class OutputPathGenerator(MusicGenerator):
         def __init__(self):
+            super().__init__(backend=MockSunoBackend())
             self.backend = None
             self.fallback_backend = None
 
@@ -361,6 +370,7 @@ def test_output_path_copy_failure():
     """Test graceful handling of file copy failures."""
     class OutputPathGenerator(MusicGenerator):
         def __init__(self):
+            super().__init__(backend=MockSunoBackend())
             self.backend = None
             self.fallback_backend = None
 

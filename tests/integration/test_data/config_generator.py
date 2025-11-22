@@ -2,7 +2,6 @@
 
 import json
 import os
-from typing import Dict, Any
 from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
 from ganglia_common.logger import Logger
 
