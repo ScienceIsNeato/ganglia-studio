@@ -7,6 +7,7 @@ import queue
 import subprocess
 import threading
 import time
+from contextlib import suppress
 from functools import lru_cache
 
 import psutil
@@ -54,9 +55,9 @@ def get_ffmpeg_thread_count(is_ci: bool | None = None) -> int:
     # Use fewer threads when memory is constrained
     if memory_gb < 4:
         return min(2, cpu_count)
-    elif memory_gb <= 8:
+    if memory_gb <= 8:
         return min(4, cpu_count)
-    elif memory_gb < 16:
+    if memory_gb < 16:
         return min(6, cpu_count)
 
     # For systems with ample memory (16GB+), apply environment-specific limits
@@ -81,9 +82,6 @@ class FFmpegOperation(threading.Thread):
         self.error = None
         self.daemon = True  # Allow the program to exit even if threads are running
         self.manager = manager
-        self.lock = threading.Lock()
-        self.active_operations = []
-        self.operation_queue = queue.Queue()
 
     def run(self):
         try:
@@ -96,22 +94,18 @@ class FFmpegOperation(threading.Thread):
             self.error = error
             self.completed = True  # Mark as completed even on error
             # Remove self from active operations immediately on error
-            with self.lock:
-                if self in self.active_operations:
-                    self.active_operations.remove(self)
-                    try:
-                        self.operation_queue.get_nowait()
-                    except queue.Empty:
-                        pass
+            with self.manager.lock:
+                if self in self.manager.active_operations:
+                    self.manager.active_operations.remove(self)
+                    with suppress(queue.Empty):
+                        self.manager.operation_queue.get_nowait()
         finally:
             # Remove self from active operations when done
-            with self.lock:
-                if self in self.active_operations:
-                    self.active_operations.remove(self)
-                    try:
-                        self.operation_queue.get_nowait()
-                    except queue.Empty:
-                        pass
+            with self.manager.lock:
+                if self in self.manager.active_operations:
+                    self.manager.active_operations.remove(self)
+                    with suppress(queue.Empty):
+                        self.manager.operation_queue.get_nowait()
 
 
 class FFmpegThreadManager:
@@ -212,7 +206,7 @@ def run_ffmpeg_command(ffmpeg_cmd):
             Logger.print_info(
                 f"Running ffmpeg command with {thread_count} threads: {' '.join(cmd)}"
             )
-            result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = subprocess.run(cmd, check=True, capture_output=True)
             Logger.print_info(f"ffmpeg output: {result.stdout.decode('utf-8')}")
             return result
 

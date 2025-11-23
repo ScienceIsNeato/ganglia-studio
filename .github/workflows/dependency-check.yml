@@ -14,6 +14,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Checkout ganglia-common (dependency)
+      uses: actions/checkout@v4
+      with:
+        repository: ScienceIsNeato/ganglia-common
+        path: ganglia-common
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -27,20 +33,19 @@ jobs:
 
     - name: Install package dependencies
       run: |
+        pip install -e ganglia-common
         pip install -e .
 
     - name: Check for security vulnerabilities (pip-audit)
       run: |
         pip-audit --desc
-      continue-on-error: true
 
     - name: Check for known vulnerabilities (safety)
       run: |
-        safety check --json --output safety-report.json || true
+        safety check --json --output safety-report.json
         if [ -f safety-report.json ]; then
           cat safety-report.json
         fi
-      continue-on-error: true
 
     - name: Check for outdated dependencies
       run: |

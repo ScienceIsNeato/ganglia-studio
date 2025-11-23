@@ -9,13 +9,14 @@ import json
 import os
 import threading
 import time
+import traceback
 
 from ganglia_common.logger import Logger
 from ganglia_common.pubsub import Event, EventType, get_pubsub
 from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
 from ganglia_common.utils.file_utils import get_timestamped_ttv_dir
-from ganglia_core.interface.parse_inputs import parse_tts_interface
 
+from ganglia_studio.interface.parse_inputs import parse_tts_interface
 from ganglia_studio.video.ttv import text_to_video
 
 
@@ -120,7 +121,12 @@ class StoryGenerationDriver:
                 event_type=EventType.STORY_INFO_NEEDED,
                 data={
                     "info_type": StoryInfoType.STORY_IDEA,
-                    "prompt": "If you tell me an interesting story, I can try to make a video. Give me some broad strokes and I can fill in the details. What do you have in mind for the protagonist? The conflict? The resolution?",
+                    "prompt": (
+                        "If you tell me an interesting story, I can try to make a video. "
+                        "Give me some broad strokes and I can fill in the details. "
+                        "What do you have in mind for the protagonist? The conflict? "
+                        "The resolution?"
+                    ),
                     "current_state": self.state,
                 },
                 source="story_generation_driver",
@@ -135,7 +141,10 @@ class StoryGenerationDriver:
                 event_type=EventType.STORY_INFO_NEEDED,
                 data={
                     "info_type": StoryInfoType.ARTISTIC_STYLE,
-                    "prompt": "What artistic style are you thinking for the visual components? What about music styles for the background music and closing credits?",
+                    "prompt": (
+                        "What artistic style are you thinking for the visual components? "
+                        "What about music styles for the background music and closing credits?"
+                    ),
                     "current_state": self.state,
                 },
                 source="story_generation_driver",
@@ -153,7 +162,7 @@ class StoryGenerationDriver:
         if event.target != self.user_id:
             return
 
-        info_type = event.data.get("info_type")
+        _info_type = event.data.get("info_type")
         user_response = event.data.get("user_response", "")
         is_valid = event.data.get("is_valid", False)
 
@@ -165,7 +174,10 @@ class StoryGenerationDriver:
                     event_type=EventType.STORY_INFO_NEEDED,
                     data={
                         "info_type": "cancelled",
-                        "prompt": "No problem! Let me know if you change your mind and want to create a video later.",
+                        "prompt": (
+                            "No problem! Let me know if you change your mind and want "
+                            "to create a video later."
+                        ),
                         "current_state": self.state,
                     },
                     source="story_generation_driver",
@@ -369,18 +381,16 @@ class StoryGenerationDriver:
             )
 
             Logger.print_error(f"Error in TTV process: {e}")
-            import traceback
-
             Logger.print_error(f"Traceback: {traceback.format_exc()}")
 
 
-# Singleton instance
-_instance = None
+# Singleton holder
+class _StoryGenerationDriverHolder:
+    instance: StoryGenerationDriver | None = None
 
 
 def get_story_generation_driver(query_dispatcher=None):
     """Get the singleton StoryGenerationDriver instance."""
-    global _instance
-    if _instance is None:
-        _instance = StoryGenerationDriver(query_dispatcher)
-    return _instance
+    if _StoryGenerationDriverHolder.instance is None:
+        _StoryGenerationDriverHolder.instance = StoryGenerationDriver(query_dispatcher)
+    return _StoryGenerationDriverHolder.instance

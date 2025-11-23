@@ -132,6 +132,23 @@ pytest tests/ -v -m "not costly"
 pytest tests/ -v -m costly
 ```
 
+### Local Quality Gate
+
+Before committing or pushing, mirror the CI jobs with the lightweight ship-it helper:
+
+```bash
+# Run default checks (lint + unit/integration tests)
+python scripts/ship_it.py
+
+# Run everything, including coverage + packaging
+python scripts/ship_it.py --checks all
+
+# Fetch PR #1 review threads/comments into logs/
+python scripts/ship_it.py --fetch-pr-comments 1
+```
+
+Available checks: `lint`, `tests`, `coverage`, `package`. Use `--list-checks` to see the current set.
+
 ### Test Structure
 
 ```

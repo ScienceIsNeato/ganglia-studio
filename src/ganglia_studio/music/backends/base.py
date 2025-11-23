@@ -12,8 +12,9 @@ class MusicBackend(ABC):
     def generate_instrumental(
         self,
         prompt: str,
-        title: str = None,
-        tags: str = None,
+        *,
+        title: str | None = None,
+        tags: str | None = None,
         wait_audio: bool = False,
         duration: int = 30,
     ) -> str:
@@ -29,18 +30,18 @@ class MusicBackend(ABC):
         Returns:
             str: Path to the generated audio file.
         """
-        pass
 
     @abstractmethod
     def generate_with_lyrics(
         self,
         prompt: str,
         story_text: str,
-        title: str = None,
-        tags: str = None,
+        *,
+        title: str | None = None,
+        tags: str | None = None,
         query_dispatcher=None,
         wait_audio: bool = False,
-        duration: int = None,
+        duration: int | None = None,
     ) -> tuple[str, str]:
         """Generate music with lyrics from a text prompt and story.
 
@@ -54,22 +55,23 @@ class MusicBackend(ABC):
             duration: Duration in seconds (default: DEFAULT_CREDITS_DURATION)
 
         Returns:
-            tuple[str, str]: Tuple containing (audio_file_path, lyrics) or (None, None) if generation fails
+            tuple[str, str]: Tuple containing (audio_file_path, lyrics) or
+            (None, None) if generation fails
         """
-        pass
 
     @abstractmethod
     def start_generation(
         self,
         prompt: str,
+        *,
         with_lyrics: bool = False,
-        title: str = None,
-        tags: str = None,
-        story_text: str = None,
+        title: str | None = None,
+        tags: str | None = None,
+        story_text: str | None = None,
         wait_audio: bool = False,
         query_dispatcher=None,
         model: str = "chirp-v3-5",
-        duration: int = None,
+        duration: int | None = None,
     ) -> str:
         """Start the generation process and return a job ID or identifier.
 
@@ -82,12 +84,12 @@ class MusicBackend(ABC):
             wait_audio: Whether to wait for audio generation
             query_dispatcher: Query dispatcher for lyric generation
             model: Model to use for generation (default: chirp-v3-5)
-            duration: Duration in seconds (default: 30 for instrumental, DEFAULT_CREDITS_DURATION for lyrics)
+            duration: Duration in seconds (default: 30 for instrumental,
+                DEFAULT_CREDITS_DURATION for lyrics)
 
         Returns:
             str: Job ID for tracking progress, or None if generation fails
         """
-        pass
 
     @abstractmethod
     def check_progress(self, job_id: str) -> tuple[str, float]:
@@ -99,7 +101,6 @@ class MusicBackend(ABC):
         Returns:
             tuple[str, float]: Status message and progress percentage (0-100)
         """
-        pass
 
     @abstractmethod
     def get_result(self, job_id: str) -> str:
@@ -111,7 +112,6 @@ class MusicBackend(ABC):
         Returns:
             str: Path to the generated audio file, or None if failed
         """
-        pass
 
     def wait_for_completion(self, job_id: str, timeout: int = 300, interval: int = 5) -> str:
         """Wait for a generation job to complete.

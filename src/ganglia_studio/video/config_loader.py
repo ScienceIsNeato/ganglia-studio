@@ -1,7 +1,7 @@
 """Module for loading and validating TTV (text-to-video) configuration files."""
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 
@@ -14,6 +14,15 @@ class MusicConfig:
 
 
 @dataclass
+class MusicOptions:
+    """Group music-related configuration."""
+
+    backend: Literal["suno", "meta"] = "suno"
+    background: MusicConfig | None = None
+    closing: MusicConfig | None = None
+
+
+@dataclass
 class TTVConfig:
     """Configuration for text-to-video generation."""
 
@@ -21,10 +30,8 @@ class TTVConfig:
     story: list[str]  # Required
     title: str  # Required
     caption_style: Literal["static", "dynamic"] = "static"  # Optional, defaults to static
-    background_music: MusicConfig | None = None
-    closing_credits: MusicConfig | None = None
+    music: MusicOptions = field(default_factory=MusicOptions)
     preloaded_images_dir: str | None = None  # Optional, directory containing pre-generated images
-    music_backend: Literal["suno", "meta"] = "suno"  # Optional, defaults to suno
 
     def __iter__(self):
         """Make the config unpackable into (style, story, title)."""
@@ -32,7 +39,29 @@ class TTVConfig:
 
     def get(self, key, default=None):
         """Get a config value by key, with an optional default."""
-        return getattr(self, key, default)
+        if hasattr(self, key):
+            return getattr(self, key, default)
+        special_keys = {
+            "background_music": self.background_music,
+            "closing_credits": self.closing_credits,
+            "music_backend": self.music_backend,
+        }
+        return special_keys.get(key, default)
+
+    @property
+    def background_music(self) -> MusicConfig | None:
+        """Background music configuration accessor."""
+        return self.music.background
+
+    @property
+    def closing_credits(self) -> MusicConfig | None:
+        """Closing credits configuration accessor."""
+        return self.music.closing
+
+    @property
+    def music_backend(self) -> Literal["suno", "meta"]:
+        """Music backend accessor."""
+        return self.music.backend
 
 
 def validate_music_config(config: MusicConfig) -> None:
@@ -41,7 +70,8 @@ def validate_music_config(config: MusicConfig) -> None:
         raise ValueError("Either file or prompt must be specified")
     if config.file is not None and config.prompt is not None:
         raise ValueError(
-            "Cannot specify both file and prompt. Current settings: file={config.file}, prompt={config.prompt}"
+            "Cannot specify both file and prompt. "
+            f"Current settings: file={config.file}, prompt={config.prompt}"
         )
 
 
@@ -105,8 +135,11 @@ def load_input(ttv_config: str) -> TTVConfig:
     # Validate caption style
     caption_style = validate_caption_style(data.get("caption_style"))
 
-    # Get preloaded images directory if present
-    preloaded_images_dir = data.get("preloaded_images_dir")
+    music_options = MusicOptions(
+        backend=data.get("music_backend", "suno"),
+        background=background_music,
+        closing=closing_credits,
+    )
 
     # Create and validate full config
     config = TTVConfig(
@@ -114,9 +147,8 @@ def load_input(ttv_config: str) -> TTVConfig:
         story=data["story"],
         title=data["title"],
         caption_style=caption_style,
-        background_music=background_music,
-        closing_credits=closing_credits,
-        preloaded_images_dir=preloaded_images_dir,
+        music=music_options,
+        preloaded_images_dir=data.get("preloaded_images_dir"),
     )
 
     return config

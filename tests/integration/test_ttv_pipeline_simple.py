@@ -6,21 +6,23 @@ structure without actually generating images or music.
 """
 
 import os
-import pytest
 import tempfile
+
+import pytest
+
 from ganglia_common.utils.file_utils import get_tempdir
-from ganglia_common.tts.google_tts import GoogleTTS
 from ganglia_studio.video.ttv import text_to_video
 from tests.helpers import (
     create_test_config,
-    validate_video_file,
-    validate_segment_files,
     find_final_video,
-    load_config
+    load_config,
+    validate_segment_files,
+    validate_video_file,
 )
 
 
 @pytest.mark.integration
+@pytest.mark.costly  # Requires TTS even with skip_generation
 def test_ttv_pipeline_with_skip_generation():
     """Test TTV pipeline with skip_generation=True (no API calls).
     
@@ -31,7 +33,7 @@ def test_ttv_pipeline_with_skip_generation():
     4. Final video is assembled
     5. Output files are valid
     
-    This test should be fast and not require API keys.
+    Note: Even though skip_generation=True, this test still requires TTS for audio.
     """
     # Create a test config
     test_dir = os.path.join(get_tempdir(), "test_ttv_simple")
@@ -44,7 +46,7 @@ def test_ttv_pipeline_with_skip_generation():
         "It continues its journey into the night."
     ]
     
-    create_test_config(config_path, story, style="cyberpunk")
+    create_test_config(config_path, story, style="cyberpunk", include_music=False)
     
     # Verify config was created
     config = load_config(config_path)

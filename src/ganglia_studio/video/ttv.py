@@ -1,3 +1,4 @@
+import os
 import traceback
 
 from ganglia_common.logger import Logger
@@ -9,13 +10,20 @@ from .final_video_generation import assemble_final_video
 from .story_processor import process_story
 
 
-# TODO: remove skip_generation globally, make query_dispatcher required
-def text_to_video(config_path, skip_generation=False, tts=None, query_dispatcher=None):
+def text_to_video(
+    config_path,
+    output_dir=None,
+    *,
+    skip_generation=False,
+    tts=None,
+    query_dispatcher=None,
+):
     """
     Convert text to video using the provided configuration.
 
     Args:
         config_path: Path to the TTV configuration file
+        output_dir: Optional directory for intermediate/final assets
         skip_generation: Whether to skip generation of images and audio
         tts: Text-to-speech engine to use (will create one if not provided)
         query_dispatcher: Query dispatcher for AI-assisted generation
@@ -25,7 +33,8 @@ def text_to_video(config_path, skip_generation=False, tts=None, query_dispatcher
     """
     try:
         # Create timestamped directory for this run
-        ttv_dir = get_timestamped_ttv_dir()
+        ttv_dir = output_dir or get_timestamped_ttv_dir()
+        os.makedirs(ttv_dir, exist_ok=True)
 
         # Load configuration
         config = load_input(config_path)
@@ -40,8 +49,8 @@ def text_to_video(config_path, skip_generation=False, tts=None, query_dispatcher
         if query_dispatcher:
             Logger.print_info("Query dispatcher provided: ChatGPTQueryDispatcher")
 
-        # Use provided TTS or initialize a new one
-        if not tts:
+        # Use provided TTS or initialize a new one (skip if skip_generation=True)
+        if not tts and not skip_generation:
             Logger.print_info("Initializing GoogleTTS...")
             tts = GoogleTTS()
 

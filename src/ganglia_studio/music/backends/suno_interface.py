@@ -18,7 +18,6 @@ class SunoInterface(ABC):
         Returns:
             str: Job ID for tracking the generation progress
         """
-        pass
 
     @abstractmethod
     def check_progress(self, job_id: str) -> tuple[str, float]:
@@ -30,7 +29,6 @@ class SunoInterface(ABC):
         Returns:
             tuple[str, float]: Status message and progress percentage (0-100)
         """
-        pass
 
     @abstractmethod
     def get_result(self, job_id: str) -> str:
@@ -42,7 +40,6 @@ class SunoInterface(ABC):
         Returns:
             str: Path to the downloaded audio file, or None if failed
         """
-        pass
 
     @abstractmethod
     def generate_instrumental(self, prompt: str, **kwargs) -> str:
@@ -55,7 +52,6 @@ class SunoInterface(ABC):
         Returns:
             str: Path to the generated audio file, or None if failed
         """
-        pass
 
     @abstractmethod
     def generate_with_lyrics(self, prompt: str, story_text: str, **kwargs) -> tuple[str, str]:
@@ -69,4 +65,3 @@ class SunoInterface(ABC):
         Returns:
             tuple[str, str]: Tuple containing (audio_file_path, lyrics) or (None, None) if failed
         """
-        pass

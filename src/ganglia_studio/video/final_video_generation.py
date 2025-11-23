@@ -53,24 +53,27 @@ def read_file_contents(file_path: str, encoding: str = "utf-8") -> str | None:
         return None
 
 
-def _upload_to_test_outputs(local_file_path: str) -> bool:
-    """Upload a file to the test outputs directory in GCS.
+def _upload_final_video(local_file_path: str) -> bool:
+    """Upload the final video to cloud storage when enabled."""
+    upload_enabled = os.getenv("ENABLE_FINAL_VIDEO_UPLOADS", "false").lower() == "true"
+    if not upload_enabled:
+        Logger.print_info(
+            "Skipping final video upload; set ENABLE_FINAL_VIDEO_UPLOADS=true to enable."
+        )
+        return False
 
-    Args:
-        local_file_path: Path to the local file to upload
-
-    Returns:
-        bool: True if upload was successful, False otherwise
-    """
-    bucket_name = "ganglia-public-test-results"  # Use our new public bucket
+    bucket_name = os.getenv("FINAL_VIDEO_BUCKET", "ganglia-public-test-results")
     project_name = os.getenv("GCP_PROJECT_NAME")
     service_account_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
     if not (project_name and service_account_path):
+        Logger.print_warning(
+            "Missing GCP credentials; cannot upload final video even though uploads are enabled."
+        )
         return False
 
     timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    gcs_path = f"test_outputs/{timestamp}_final_video.mp4"
+    gcs_path = f"final_videos/{timestamp}_final_video.mp4"
 
     success = upload_to_gcs(
         local_file_path=local_file_path,
@@ -137,7 +140,8 @@ def concatenate_video_segments(
                     "copy",
                     # Normalize audio to consistent format
                     "-af",
-                    f"aformat=sample_fmts=fltp:sample_rates={AUDIO_SAMPLE_RATE}:channel_layouts=stereo",
+                    f"aformat=sample_fmts=fltp:sample_rates={AUDIO_SAMPLE_RATE}:"
+                    "channel_layouts=stereo",
                 ]
                 + AUDIO_ENCODING_ARGS
                 + [output_path]
@@ -188,8 +192,10 @@ def add_background_music(
             f"[0:a]aresample={AUDIO_SAMPLE_RATE},aformat=sample_fmts=fltp[mono];"
             "[mono]pan=stereo|c0=c0|c1=c0[v];"
             # Process background music
-            f"[1:a]aresample={AUDIO_SAMPLE_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,volume={music_volume}[m];"
-            # Mix the streams - use duration=first to prevent background music from extending video duration
+            f"[1:a]aresample={AUDIO_SAMPLE_RATE},aformat=sample_fmts=fltp:"
+            f"channel_layouts=stereo,volume={music_volume}[m];"
+            # Mix the streams - use duration=first to prevent background music from
+            # extending video duration
             "[v][m]amix=inputs=2:duration=first:dropout_transition=2[aout]"
         )
 
@@ -226,9 +232,71 @@ def add_background_music(
         return None
 
 
+def _apply_background_music(main_video_path, music_path, output_dir):
+    """Apply background music if provided."""
+    if music_path and os.path.exists(music_path):
+        Logger.print_info(f"Adding background music from {music_path}...")
+        with_music = add_background_music(
+            video_path=main_video_path, music_path=music_path, output_dir=output_dir
+        )
+        if with_music:
+            return with_music
+        Logger.print_warning("Failed to add background music, using video without music")
+    else:
+        Logger.print_info("No background music specified, skipping...")
+    return main_video_path
+
+
+def _append_closing_credits(
+    base_video_path,
+    *,
+    song_with_lyrics_path,
+    movie_poster_path,
+    output_dir,
+    config,
+    closing_credits_lyrics,
+):
+    """Append closing credits if all assets are available."""
+    if not (song_with_lyrics_path and os.path.exists(song_with_lyrics_path)):
+        Logger.print_info("No closing credits specified, skipping...")
+        return base_video_path
+
+    Logger.print_info(f"Generating closing credits with {song_with_lyrics_path}...")
+    if not (movie_poster_path and os.path.exists(movie_poster_path)):
+        Logger.print_warning(
+            "No movie poster available for closing credits, using video without credits"
+        )
+        return base_video_path
+
+    closing_credits = generate_closing_credits(
+        movie_poster_path,
+        song_with_lyrics_path,
+        output_dir,
+        config,
+        closing_credits_lyrics,
+    )
+    if not closing_credits:
+        Logger.print_warning("Failed to generate closing credits, using video without credits")
+        return base_video_path
+
+    Logger.print_info("Appending closing credits to main video...")
+    final_output_path = append_video_segments(
+        [base_video_path, closing_credits],
+        output_dir=output_dir,
+        force_reencode=True,
+    )
+    if final_output_path:
+        Logger.print_info(f"Successfully added closing credits from {song_with_lyrics_path}")
+        return final_output_path
+
+    Logger.print_warning("Failed to append closing credits, using video without credits")
+    return base_video_path
+
+
 def assemble_final_video(
     video_segments: list[str],
     output_dir: str,
+    *,
     music_path: str | None = None,
     song_with_lyrics_path: str | None = None,
     movie_poster_path: str | None = None,
@@ -258,64 +326,15 @@ def assemble_final_video(
             return None
         Logger.print_info("Successfully concatenated video segments")
 
-        final_output_path = main_video_path
-
-        # Handle background music
-        if music_path and os.path.exists(music_path):
-            Logger.print_info(f"Adding background music from {music_path}...")
-            main_video_with_background_music_path = add_background_music(
-                video_path=main_video_path, music_path=music_path, output_dir=output_dir
-            )
-            if main_video_with_background_music_path:
-                final_output_path = main_video_with_background_music_path
-            else:
-                Logger.print_warning("Failed to add background music, using video without music")
-                final_output_path = main_video_path
-        else:
-            Logger.print_info("No background music specified, skipping...")
-            main_video_with_background_music_path = main_video_path
-
-        # Handle closing credits
-        if song_with_lyrics_path and os.path.exists(song_with_lyrics_path):
-            Logger.print_info(f"Generating closing credits with {song_with_lyrics_path}...")
-            if movie_poster_path and os.path.exists(movie_poster_path):
-                closing_credits = generate_closing_credits(
-                    movie_poster_path,
-                    song_with_lyrics_path,
-                    output_dir,
-                    config,
-                    closing_credits_lyrics,
-                )
-                if closing_credits:
-                    # Stitch together the main content and the credits
-                    Logger.print_info("Appending closing credits to main video...")
-                    final_output_path = append_video_segments(
-                        [main_video_with_background_music_path, closing_credits],
-                        output_dir=output_dir,
-                        force_reencode=True,  # Force re-encoding to fix audio playback
-                    )
-                    if final_output_path:
-                        Logger.print_info(
-                            f"Successfully added closing credits from {song_with_lyrics_path}"
-                        )
-                    else:
-                        Logger.print_warning(
-                            "Failed to append closing credits, using video without credits"
-                        )
-                        final_output_path = main_video_with_background_music_path
-                else:
-                    Logger.print_warning(
-                        "Failed to generate closing credits, using video without credits"
-                    )
-                    final_output_path = main_video_with_background_music_path
-            else:
-                Logger.print_warning(
-                    "No movie poster available for closing credits, using video without credits"
-                )
-                final_output_path = main_video_with_background_music_path
-        else:
-            Logger.print_info("No closing credits specified, skipping...")
-            final_output_path = main_video_with_background_music_path
+        final_output_path = _apply_background_music(main_video_path, music_path, output_dir)
+        final_output_path = _append_closing_credits(
+            final_output_path,
+            song_with_lyrics_path=song_with_lyrics_path,
+            movie_poster_path=movie_poster_path,
+            output_dir=output_dir,
+            config=config,
+            closing_credits_lyrics=closing_credits_lyrics,
+        )
 
         # Standardize the name of the final video to final_video.mp4
         exit_output_path = os.path.join(output_dir, "final_video.mp4")
@@ -327,9 +346,8 @@ def assemble_final_video(
         else:
             Logger.print_error("Failed to rename final video")
 
-        # Upload the final video to GCS test outputs
-        #  TODO: This shouldn't be specific to test outputs
-        _upload_to_test_outputs(final_output_path)
+        # Optionally upload the final video to GCS if enabled
+        _upload_final_video(final_output_path)
 
         Logger.print_info(LOG_FINAL_VIDEO_PATH.format(final_output_path))
         play_video(final_output_path)
@@ -340,13 +358,12 @@ def assemble_final_video(
         if final_output_path:
             Logger.print_info(LOG_FINAL_VIDEO_PATH.format(final_output_path))
             return final_output_path
-        elif main_video_path:
+        if main_video_path:
             Logger.print_info(LOG_FINAL_VIDEO_PATH.format(main_video_path))
             return main_video_path
-        else:
-            fallback_path = os.path.join(output_dir, "fallback_video.mp4")
-            Logger.print_info(LOG_FINAL_VIDEO_PATH.format(fallback_path))
-            return fallback_path
+        fallback_path = os.path.join(output_dir, "fallback_video.mp4")
+        Logger.print_info(LOG_FINAL_VIDEO_PATH.format(fallback_path))
+        return fallback_path
 
 
 def generate_closing_credits(
@@ -386,9 +403,7 @@ def generate_closing_credits(
             song_with_lyrics_path,
         ]
         with subprocess_lock:  # Protect subprocess.run from gRPC fork issues
-            result = subprocess.run(
-                ffprobe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
-            )
+            result = subprocess.run(ffprobe_cmd, check=True, capture_output=True)
         duration = float(result.stdout.decode("utf-8").strip())
         Logger.print_info(f"{LOG_CLOSING_CREDITS_DURATION}: {duration}s")
 
@@ -454,9 +469,8 @@ def generate_closing_credits(
                 f"Generated closing credits video with captions at {closing_credits_video_path}"
             )
             return closing_credits_video_path
-        else:
-            Logger.print_error("Failed to add captions to closing credits video")
-            return initial_credits_video_path
+        Logger.print_error("Failed to add captions to closing credits video")
+        return initial_credits_video_path
 
     except (subprocess.CalledProcessError, OSError) as e:
         Logger.print_error(f"Error generating closing credits: {str(e)}")
@@ -493,7 +507,7 @@ def get_video_duration(video_path: str) -> float | None:
             video_path,
         ]
 
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        result = subprocess.run(cmd, check=True, capture_output=True)
 
         duration = float(result.stdout.decode().strip())
         return duration

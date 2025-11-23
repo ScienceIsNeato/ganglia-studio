@@ -53,7 +53,8 @@ class LyricsGenerator:
             "lyrics": "the generated lyrics here"
         }}
 
-        The lyrics should capture the essence and themes of the story while being memorable and fitting the time constraint.
+        The lyrics should capture the essence and themes of the story while being
+        memorable and fitting the time constraint.
         """
 
         response = query_dispatcher.send_query(prompt)
@@ -87,8 +88,11 @@ class LyricsGenerator:
         Logger.print_info("Determining lyrical style with ChatGPT.")
 
         prompt = (
-            f"Based on the following story, suggest an appropriate lyrical style for a song:\n\n{story_text}\n\n"
-            "Possible styles include: " + ", ".join(example_lyrical_styles) + ".\n\n"
+            "Based on the following story, suggest an appropriate lyrical style for a song:\n\n"
+            f"{story_text}\n\n"
+            "Possible styles include: "
+            + ", ".join(example_lyrical_styles)
+            + ".\n\n"
             "Return the style as a single word or phrase that best fits the story."
         )
 

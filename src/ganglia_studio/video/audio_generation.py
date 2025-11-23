@@ -47,6 +47,7 @@ def generate_audio(
                 "voice": {"languageCode": language_code, "name": voice},
                 "audioConfig": {"audioEncoding": "LINEAR16", "pitch": 0, "speakingRate": 1.0},
             },
+            timeout=30,
         )
 
         if response.status_code != 200:
@@ -135,7 +136,7 @@ def mix_audio_tracks(
 
         # Build filter complex for mixing
         inputs = []
-        for i, track in enumerate(tracks):
+        for track in tracks:
             inputs.extend(["-i", track])
 
         filter_parts = []
