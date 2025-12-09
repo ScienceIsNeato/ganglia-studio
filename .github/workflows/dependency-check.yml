@@ -42,7 +42,7 @@ jobs:
 
     - name: Check for known vulnerabilities (safety)
       run: |
-        safety check --json > safety-report.json || true
+        safety check --json > safety-report.json
         if [ -f safety-report.json ]; then
           cat safety-report.json
         fi
