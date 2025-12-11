@@ -7,29 +7,33 @@ and output validation.
 
 # Standard library imports
 import logging
+import os
 import subprocess
 import sys
-import os
 
 # Third-party imports
 import pytest
 
 # Local application imports
 from ganglia_common.utils.file_utils import get_tempdir
+
 from tests.integration.test_data.config_generator import generate_config
 from tests.test_helpers import (
+    get_output_dir_from_logs,
     validate_audio_video_durations,
-    validate_final_video_path,
-    validate_total_duration,
-    validate_closing_credits_duration,
-    validate_segment_count,
     validate_background_music,
-    validate_gcs_upload,
     validate_caption_accuracy,
-    get_output_dir_from_logs
+    validate_closing_credits_duration,
+    validate_final_video_path,
+    validate_gcs_upload,
+    validate_segment_count,
+    validate_total_duration,
 )
-# Note: social_media module not yet migrated to ganglia-studio
-# from ganglia_studio.social_media.youtube_client import YouTubeClient
+
+try:
+    from ganglia_studio.social_media.youtube_client import YouTubeClient
+except ImportError:  # pragma: no cover - optional dependency
+    YouTubeClient = None
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +118,8 @@ def test_generated_pipeline_execution():
         # Post results to YouTube if we have a final video
         if final_video_path and os.path.exists(final_video_path):
             try:
+                if YouTubeClient is None:
+                    pytest.skip("YouTubeClient not available")
                 client = YouTubeClient()
                 video_url = client.create_video_post(
                     title="GANGLIA Integration Test: TTV Pipeline (Generated)",

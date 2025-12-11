@@ -10,15 +10,17 @@ This module provides utility functions for unit, integration, and third-party te
 - Text color analysis
 """
 
+import json
+import logging
 import os
 import re
 import subprocess
 import time
-import json
-import logging
 from collections import Counter
+
 import cv2
 import numpy as np
+
 try:
     from google.cloud import storage
 except ModuleNotFoundError as exc:  # pragma: no cover
@@ -27,15 +29,15 @@ except ModuleNotFoundError as exc:  # pragma: no cover
         "Install it with `pip install google-cloud-storage` before running the suite."
     ) from exc
 from ganglia_common.logger import Logger
-from ganglia_studio.video.color_utils import get_vibrant_palette
-from ganglia_studio.video.log_messages import (
-    LOG_CLOSING_CREDITS_DURATION,
-    LOG_FFPROBE_COMMAND,
-    LOG_BACKGROUND_MUSIC_SUCCESS,
-    LOG_BACKGROUND_MUSIC_FAILURE
-)
 
 from ganglia_studio.utils.ffmpeg_utils import run_ffmpeg_command
+from ganglia_studio.video.color_utils import get_vibrant_palette
+from ganglia_studio.video.log_messages import (
+    LOG_BACKGROUND_MUSIC_FAILURE,
+    LOG_BACKGROUND_MUSIC_SUCCESS,
+    LOG_CLOSING_CREDITS_DURATION,
+    LOG_FFPROBE_COMMAND,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +178,7 @@ def validate_audio_video_durations(config_path, output):
             config = json.loads(f.read())
             expected_segments = len(config.get('story', []))
     except (json.JSONDecodeError, FileNotFoundError, KeyError) as e:
-        raise AssertionError(f"Failed to read story from config: {e}") # pylint: disable=raise-missing-from
+        raise AssertionError(f"Failed to read story from config: {e}") from e  # pylint: disable=raise-missing-from
 
     # Get output directory from logs
     output_dir = get_output_dir_from_logs(output)
@@ -288,8 +290,10 @@ def find_closest_palette_color(color):
         tuple: (closest_color, difference)
     """
     palette = get_vibrant_palette()
-    color_diffs = [sum(abs(c1 - c2) for c1, c2 in zip(color, palette_color))
-                  for palette_color in palette]
+    color_diffs = [
+        sum(abs(c1 - c2) for c1, c2 in zip(color, palette_color, strict=False))
+        for palette_color in palette
+    ]
     min_diff = min(color_diffs)
     closest_color = palette[color_diffs.index(min_diff)]
     return closest_color, min_diff
@@ -417,9 +421,10 @@ def validate_gcs_upload(bucket_name: str, project_name: str) -> storage.Blob:
     # Find the most recently uploaded file
     uploaded_file = None
     for blob in blobs:
-        if blob.name.endswith("_final_video.mp4"):
-            if not uploaded_file or blob.time_created > uploaded_file.time_created:
-                uploaded_file = blob
+        if blob.name.endswith("_final_video.mp4") and (
+            not uploaded_file or blob.time_created > uploaded_file.time_created
+        ):
+            uploaded_file = blob
 
     assert uploaded_file is not None, "Failed to find uploaded video in GCS"
     assert uploaded_file.exists(), "Uploaded file does not exist in GCS"
@@ -486,27 +491,27 @@ def validate_caption_accuracy(output: str, config_path: str) -> None:
         print(f"Extra words: {sorted(extra_words)}")
 
     # Define thresholds
-    CRITICAL_THRESHOLD = 25.0  # Test fails if below this
-    WORD_PRESENCE_TARGET = 80.0  # Warning if below this
+    critical_threshold = 25.0  # Test fails if below this
+    word_presence_target = 80.0  # Warning if below this
 
     # Allow skipping strict caption validation (useful when captions aren't being tested)
     # CI can set this to allow tests to pass without perfect caption accuracy
     skip_strict_validation = os.getenv('SKIP_STRICT_CAPTION_VALIDATION', 'false').lower() == 'true'
 
     # Check for critical failures (truly poor accuracy)
-    if word_presence_score < CRITICAL_THRESHOLD and not skip_strict_validation:
+    if word_presence_score < critical_threshold and not skip_strict_validation:
         raise AssertionError(
             f"Caption accuracy critically low: word presence score {word_presence_score:.1f}% "
-            f"is below minimum threshold of {CRITICAL_THRESHOLD}%"
+            f"is below minimum threshold of {critical_threshold}%"
         )
-    elif word_presence_score < CRITICAL_THRESHOLD:
+    elif word_presence_score < critical_threshold:
         print(f"\n⚠️  Warning: Caption accuracy critically low ({word_presence_score:.1f}%), "
               f"but SKIP_STRICT_CAPTION_VALIDATION is enabled - continuing test")
 
     # Warn about moderate accuracy issues
-    if word_presence_score < WORD_PRESENCE_TARGET:
+    if word_presence_score < word_presence_target:
         print(f"\n⚠️  Warning: Word presence score ({word_presence_score:.1f}%) "
-              f"is below target of {WORD_PRESENCE_TARGET}%")
+              f"is below target of {word_presence_target}%")
         print("\n⚠️  Captions below target accuracy but above critical threshold - continuing test")
     else:
         print("\n✓ All captions meet target accuracy threshold")

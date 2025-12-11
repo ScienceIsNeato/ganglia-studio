@@ -15,11 +15,12 @@ import traceback
 # Third-party imports
 import pytest
 import requests
-from openai import OpenAI
 
 # Local imports
 from ganglia_common.logger import Logger
 from ganglia_common.utils.file_utils import get_tempdir
+from openai import OpenAI
+
 
 @pytest.mark.costly
 def test_dalle_basic_generation():

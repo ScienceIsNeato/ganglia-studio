@@ -7,9 +7,12 @@ The tests include audio playback capabilities with skip functionality.
 
 import os
 import time
+
 import pytest
-from tests.test_helpers import play_media
+
 from ganglia_studio.music.backends.suno_api_org import SunoApiOrgBackend
+from tests.test_helpers import play_media
+
 
 @pytest.mark.costly
 def test_generate_instrumental():

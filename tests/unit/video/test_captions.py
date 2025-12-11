@@ -11,11 +11,14 @@ This module contains tests for caption generation functionality including:
 # pylint: disable=no-member,unused-import,unused-variable,import-outside-toplevel
 
 import os
+
 import cv2
 import pytest
-
 from ganglia_common.logger import Logger
 from ganglia_common.utils.file_utils import get_tempdir
+
+from ganglia_studio.utils.ffmpeg_utils import run_ffmpeg_command
+from ganglia_studio.utils.video_utils import create_test_video
 from ganglia_studio.video.audio_alignment import create_word_level_captions
 from ganglia_studio.video.captions import (
     CaptionEntry,
@@ -28,10 +31,9 @@ from ganglia_studio.video.captions import (
     split_into_words,
 )
 from ganglia_studio.video.color_utils import get_vibrant_palette
-from ganglia_studio.utils.ffmpeg_utils import run_ffmpeg_command
-from ganglia_studio.utils.video_utils import create_test_video
 from tests.audio_fixtures import generate_dummy_tts_audio
 from tests.test_helpers import get_text_colors_from_video, play_media
+
 
 def get_default_font():
     """Get the default font path for testing."""
@@ -269,7 +271,7 @@ def test_create_srt_captions():
         assert os.path.getsize(srt_path) > 0, "SRT file is empty"
 
         # Read and verify content
-        with open(srt_path, 'r', encoding='utf-8') as f:
+        with open(srt_path, encoding='utf-8') as f:
             content = f.read()
             assert "First caption" in content, "First caption not found in SRT"
             assert "Second caption" in content, "Second caption not found in SRT"
@@ -318,8 +320,12 @@ def test_audio_aligned_captions(tmp_path):
             print(f"Word {i}: '{caption.text}' ({caption.start_time:.2f}s - {caption.end_time:.2f}s)")
 
         # Verify all words from test_text are present in captions
-        test_words = set(word.strip() for word in test_text.lower().split())
-        caption_words = set(word.strip() for caption in captions for word in caption.text.lower().split())
+        test_words = {word.strip() for word in test_text.lower().split()}
+        caption_words = {
+            word.strip()
+            for caption in captions
+            for word in caption.text.lower().split()
+        }
         missing_words = test_words - caption_words
         extra_words = caption_words - test_words
 
@@ -527,7 +533,10 @@ def test_vibrant_color_palette():
         print(f"Palette colors: {palette}")
 
         # The text color should be close to one of the vibrant colors
-        color_diffs = [sum(abs(c1 - c2) for c1, c2 in zip(text_color, palette_color)) for palette_color in palette]
+        color_diffs = [
+            sum(abs(c1 - c2) for c1, c2 in zip(text_color, palette_color, strict=False))
+            for palette_color in palette
+        ]
         min_diff = min(color_diffs)
         closest_color = palette[color_diffs.index(min_diff)]
         print(f"Closest palette color: {closest_color} (diff: {min_diff})")
@@ -536,7 +545,7 @@ def test_vibrant_color_palette():
 
         # The stroke color should be a darker version of the text color (about 1/3 intensity)
         expected_stroke = tuple(c // 3 for c in text_color)
-        for actual, expected in zip(stroke_color, expected_stroke):
+        for actual, expected in zip(stroke_color, expected_stroke, strict=False):
             assert abs(actual - expected) <= 10, f"Stroke color {stroke_color} not proportional to text color {text_color}"
 
     finally:
@@ -616,7 +625,7 @@ def test_no_word_overlap():
             positions = calculate_word_positions(window, video_height, margin)
 
             # Check each word has reasonable spacing
-            for word, pos in zip(window.words, positions):
+            for word, pos in zip(window.words, positions, strict=False):
                 x, y = pos
                 # Verify word is within ROI bounds
                 assert x >= margin, f"Word '{word.text}' too close to left edge"

@@ -1,6 +1,7 @@
 """Tests for caption ROI detection functionality."""
 
 import numpy as np
+
 from ganglia_studio.video.caption_roi import find_roi_in_frame
 from ganglia_studio.video.color_utils import get_contrasting_color
 
@@ -46,9 +47,9 @@ def test_contrasting_color_dark_background():
     for frame, expected_color, expected_stroke in test_cases:
         text_color, stroke_color = get_contrasting_color(frame, roi)
         # Allow for small differences in RGB values
-        for actual, expected in zip(text_color, expected_color):
+        for actual, expected in zip(text_color, expected_color, strict=False):
             assert abs(actual - expected) <= 2, f"Color value {actual} too far from expected {expected}"
-        for actual, expected in zip(stroke_color, expected_stroke):
+        for actual, expected in zip(stroke_color, expected_stroke, strict=False):
             assert abs(actual - expected) <= 2, f"Stroke value {actual} too far from expected {expected}"
 
 
@@ -65,9 +66,9 @@ def test_contrasting_color_light_background():
     for frame, expected_color, expected_stroke in test_cases:
         text_color, stroke_color = get_contrasting_color(frame, roi)
         # Allow for small differences in RGB values
-        for actual, expected in zip(text_color, expected_color):
+        for actual, expected in zip(text_color, expected_color, strict=False):
             assert abs(actual - expected) <= 2, f"Color value {actual} too far from expected {expected}"
-        for actual, expected in zip(stroke_color, expected_stroke):
+        for actual, expected in zip(stroke_color, expected_stroke, strict=False):
             assert abs(actual - expected) <= 2, f"Stroke value {actual} too far from expected {expected}"
 
 
@@ -86,26 +87,26 @@ def test_contrasting_color_gradient():
     # Dark region should get light cyan for dark red
     text_color, stroke_color = get_contrasting_color(frame, dark_roi)
     # For gradient test, use relative tolerance since we're doing color calculations
-    for actual, expected in zip(text_color, (231, 255, 255)):
+    for actual, expected in zip(text_color, (231, 255, 255), strict=False):
         rel_diff = abs(actual - expected) / max(expected, 1) * 100
         assert rel_diff <= 2, f"Color value {actual} differs from expected {expected} by {rel_diff}%"
-    for actual, expected in zip(stroke_color, (77, 85, 85)):
+    for actual, expected in zip(stroke_color, (77, 85, 85), strict=False):
         rel_diff = abs(actual - expected) / max(expected, 1) * 100
         assert rel_diff <= 2, f"Stroke value {actual} differs from expected {expected} by {rel_diff}%"
 
     # Light red region should get light cyan
     text_color, stroke_color = get_contrasting_color(frame, light_roi)
-    for actual, expected in zip(text_color, (205, 255, 255)):
+    for actual, expected in zip(text_color, (205, 255, 255), strict=False):
         rel_diff = abs(actual - expected) / max(expected, 1) * 100
         assert rel_diff <= 2, f"Color value {actual} differs from expected {expected} by {rel_diff}%"
-    for actual, expected in zip(stroke_color, (68, 85, 85)):
+    for actual, expected in zip(stroke_color, (68, 85, 85), strict=False):
         rel_diff = abs(actual - expected) / max(expected, 1) * 100
         assert rel_diff <= 2, f"Stroke value {actual} differs from expected {expected} by {rel_diff}%"
 
 
 def test_roi_centering():
     """Test that ROI is properly centered in uniform frames.
-    
+
     For frames with uniform content (like solid colors), the ROI should be centered
     since there's no reason to prefer one location over another.
     """

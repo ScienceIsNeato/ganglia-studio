@@ -13,8 +13,8 @@ import math
 import os
 import struct
 import wave
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 # ---------------------------------------------------------------------------
 # Synthetic audio helpers

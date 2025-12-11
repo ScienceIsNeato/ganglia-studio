@@ -1,10 +1,13 @@
 """Unit tests for the SunoApi.org backend implementation."""
 
 import json
-from unittest.mock import patch, MagicMock, mock_open
-import pytest
-from ganglia_studio.music.backends.suno_api_org import SunoApiOrgBackend
 import time
+from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
+
+from ganglia_studio.music.backends.suno_api_org import SunoApiOrgBackend
+
 
 @pytest.fixture
 def mock_env(monkeypatch):
@@ -134,15 +137,15 @@ def test_check_progress(backend):
         }
     }
 
-    with patch('requests.request', return_value=mock_response) as mock_request:
-        with patch('time.time', return_value=1000):  # Mock current time
-            with patch.object(backend, '_get_start_time', return_value=980):  # Mock start time 20s ago
-                status, progress = backend.check_progress("test_job_id")
+    with patch('requests.request', return_value=mock_response) as mock_request, \
+         patch('time.time', return_value=1000), \
+         patch.object(backend, '_get_start_time', return_value=980):
+        status, progress = backend.check_progress("test_job_id")
 
-                assert "Test Song" in status
-                assert "Processing lyrics" in status
-                assert progress > 0
-                mock_request.assert_called_once()
+        assert "Test Song" in status
+        assert "Processing lyrics" in status
+        assert progress > 0
+        mock_request.assert_called_once()
 
 def test_get_result(backend):
     """Test getting generation result."""
@@ -172,13 +175,13 @@ def test_get_result(backend):
     mock_download_response.iter_content.return_value = [b"test audio data"]
     mock_download_response.ok = True
 
-    with patch('requests.request', side_effect=[mock_response, mock_download_response]) as mock_request:
-        with patch('builtins.open', mock_open()) as mock_file:
-            result = backend.get_result("test_job_id")
+    with patch('requests.request', side_effect=[mock_response, mock_download_response]) as mock_request, \
+         patch('builtins.open', mock_open()) as mock_file:
+        result = backend.get_result("test_job_id")
 
-            assert result is not None
-            assert mock_request.call_count == 2
-            mock_file.assert_called_once()
+        assert result is not None
+        assert mock_request.call_count == 2
+        mock_file.assert_called_once()
 
 def test_generate_instrumental_success(backend):
     """Test successful instrumental generation flow."""
@@ -241,35 +244,37 @@ def test_generate_instrumental_success(backend):
     mock_download_response.iter_content.return_value = [b"test audio data"]
     mock_download_response.ok = True
 
-    with patch('requests.request', side_effect=[mock_start_response, mock_check_response, mock_result_response, mock_download_response]) as mock_request:
-        with patch('builtins.open', mock_open()) as mock_file:
-            with patch.object(backend, '_get_start_time', return_value=980):  # Mock start time
-                with patch('time.sleep'):  # Mock sleep to skip waiting
-                    # Start the generation
-                    job_id = backend.generate_instrumental(
-                        prompt="test instrumental",
-                        title="Test Instrumental",
-                        tags="electronic"
-                    )
+    with patch(
+        'requests.request',
+        side_effect=[mock_start_response, mock_check_response, mock_result_response, mock_download_response],
+    ) as mock_request, patch('builtins.open', mock_open()) as mock_file, \
+         patch.object(backend, '_get_start_time', return_value=980), \
+         patch('time.sleep'):
+        # Start the generation
+        job_id = backend.generate_instrumental(
+            prompt="test instrumental",
+            title="Test Instrumental",
+            tags="electronic"
+        )
 
-                    assert job_id == "test_job_id"
+        assert job_id == "test_job_id"
 
-                    # Wait for completion by polling
-                    max_wait = 30  # Maximum wait time in seconds
-                    start_time = time.time()
-                    while True:
-                        status, progress = backend.check_progress(job_id)
-                        if progress >= 100:
-                            break
-                        if time.time() - start_time > max_wait:
-                            pytest.fail("Generation timed out")
-                        time.sleep(1)
+        # Wait for completion by polling
+        max_wait = 30  # Maximum wait time in seconds
+        start_time = time.time()
+        while True:
+            status, progress = backend.check_progress(job_id)
+            if progress >= 100:
+                break
+            if time.time() - start_time > max_wait:
+                pytest.fail("Generation timed out")
+            time.sleep(1)
 
-                    # Get the final result
-                    result = backend.get_result(job_id)
-                    assert result is not None
-                    assert mock_request.call_count == 4
-                    mock_file.assert_called()
+        # Get the final result
+        result = backend.get_result(job_id)
+        assert result is not None
+        assert mock_request.call_count == 4
+        mock_file.assert_called()
 
 def test_generate_with_lyrics_success(backend):
     """Test successful generation with lyrics flow."""
@@ -334,28 +339,26 @@ def test_generate_with_lyrics_success(backend):
     mock_download_response.iter_content.return_value = [b"test audio data"]
     mock_download_response.ok = True
 
-    with patch('requests.request', side_effect=[mock_start_response, mock_check_response, mock_result_response, mock_download_response]) as mock_request:
-        with patch('builtins.open', mock_open()) as mock_file:
-            with patch.object(backend, '_get_start_time', return_value=980):  # Mock start time
-                with patch('time.sleep'):  # Mock sleep to skip waiting
-                    # Start the generation
-                    result_path, story_text = backend.generate_with_lyrics(
-                        prompt="test song",
-                        story_text="Test story for lyrics",
-                        title="Test Song",
-                        tags="pop"
-                    )
+    with patch(
+        'requests.request',
+        side_effect=[mock_start_response, mock_check_response, mock_result_response, mock_download_response],
+    ) as mock_request, patch('builtins.open', mock_open()) as mock_file, \
+         patch.object(backend, '_get_start_time', return_value=980), \
+         patch('time.sleep'):
+        result_path, story_text = backend.generate_with_lyrics(
+            prompt="test song",
+            story_text="Test story for lyrics",
+            title="Test Song",
+            tags="pop"
+        )
 
-                    # generate_with_lyrics returns (file_path, story_text), not (job_id, story_text)
-                    # It's a blocking call that handles polling internally
-                    assert result_path is not None
-                    assert result_path.endswith('.mp3')
-                    assert 'test_job_id' in result_path  # Job ID is part of the filename
-                    assert story_text == "Test story for lyrics"
-                    
-                    # Verify the expected number of API calls were made
-                    assert mock_request.call_count == 4  # start + check + result + download
-                    mock_file.assert_called()  # Verify file was written
+        assert result_path is not None
+        assert result_path.endswith('.mp3')
+        assert 'test_job_id' in result_path
+        assert story_text == "Test story for lyrics"
+
+        assert mock_request.call_count == 4
+        mock_file.assert_called()
 
 def test_exponential_backoff_retries(backend, mock_exponential_backoff):
     """Test that exponential backoff retries work correctly without delays."""

@@ -4,14 +4,18 @@ This module contains tests for the story generation driver, which manages
 the process of gathering information for text-to-video generation.
 """
 
-import unittest
 import tempfile
+import unittest
 from unittest.mock import MagicMock, patch
 
-from ganglia_studio.story.story_generation_driver import (
-    StoryGenerationDriver, StoryInfoType, StoryGenerationState, get_story_generation_driver
-)
 from ganglia_common.pubsub import Event, EventType
+
+from ganglia_studio.story.story_generation_driver import (
+    StoryGenerationDriver,
+    StoryGenerationState,
+    StoryInfoType,
+    get_story_generation_driver,
+)
 
 
 class TestStoryGenerationDriver(unittest.TestCase):

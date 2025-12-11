@@ -11,16 +11,18 @@ import select
 import subprocess
 import sys
 import termios
-import tty
 import time
+import tty
 
 # Third-party imports
 import pytest
 
+from ganglia_studio.music.backends.meta import MetaMusicBackend
+
 # Local imports
 from ganglia_studio.music.music_lib import MusicGenerator
 from ganglia_studio.video.config_loader import load_input
-from ganglia_studio.music.backends.meta import MetaMusicBackend
+
 
 def wait_for_spacebar():
     """Wait for spacebar press to continue."""
@@ -35,7 +37,7 @@ def wait_for_spacebar():
                 key = sys.stdin.read(1)
                 if key == ' ':
                     break
-    except (termios.error, IOError) as e:
+    except (OSError, termios.error) as e:
         print(f"Terminal interaction error: {e}")
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
@@ -68,7 +70,7 @@ def test_meta_musicgen_generation():
         assert audio_path is not None
         assert audio_path.endswith(".wav")
 
-    except (RuntimeError, IOError, ValueError) as e:
+    except (OSError, RuntimeError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")
 
 @pytest.mark.costly
@@ -100,7 +102,7 @@ def test_meta_musicgen_with_duration():
         assert audio_path is not None
         assert audio_path.endswith(".wav")
 
-    except (RuntimeError, IOError, ValueError) as e:
+    except (OSError, RuntimeError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")
 
 @pytest.mark.costly
@@ -132,7 +134,7 @@ def test_meta_musicgen_with_seed():
         assert audio_path is not None
         assert audio_path.endswith(".wav")
 
-    except (RuntimeError, IOError, ValueError) as e:
+    except (OSError, RuntimeError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")
 
 @pytest.mark.costly
@@ -165,7 +167,7 @@ def test_meta_musicgen_with_duration_and_seed():
         assert audio_path is not None
         assert audio_path.endswith(".wav")
 
-    except (RuntimeError, IOError, ValueError) as e:
+    except (OSError, RuntimeError, ValueError) as e:
         pytest.skip(f"Meta MusicGen generation failed: {e}")
 
 @pytest.mark.costly

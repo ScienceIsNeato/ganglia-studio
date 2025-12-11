@@ -1,8 +1,16 @@
-import unittest
-from unittest.mock import Mock, patch, MagicMock
 import json
-from ganglia_studio.video.story_generation import generate_filtered_story, generate_movie_poster, filter_text, save_image_without_caption
+import unittest
+from unittest.mock import MagicMock, Mock, patch
+
 from ganglia_common.utils.file_utils import get_timestamped_ttv_dir
+
+from ganglia_studio.video.story_generation import (
+    filter_text,
+    generate_filtered_story,
+    generate_movie_poster,
+    save_image_without_caption,
+)
+
 
 class TestStoryGeneration(unittest.TestCase):
     def setUp(self):

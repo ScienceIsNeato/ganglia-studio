@@ -4,27 +4,31 @@ This test simulates a conversation with GANGLIA where the user requests a video,
 and tests the entire flow from conversation to video generation.
 """
 
+# ruff: noqa: E402, F401, F821, N802
+
 import os
 import sys
+
 import pytest
 
 # Skip entire module - requires ganglia_core which is not yet fully set up
 pytestmark = pytest.mark.skip(reason="Requires ganglia_core setup - deferred until ganglia-core repository is ready")
 
 import json
-import shutil
-from unittest.mock import MagicMock, patch
-import time
 import logging
+import shutil
+import time
+from unittest.mock import MagicMock, patch
 
 # Commented out until ganglia_core is ready
 # from ganglia_core.ganglia import initialize_components, load_config
 # from ganglia_core.conversation import Conversation
-from ganglia_common.pubsub import get_pubsub, Event, EventType
+from ganglia_common.pubsub import Event, EventType, get_pubsub
 from ganglia_common.utils.file_utils import get_tempdir
+
 from tests.test_helpers import (
-    validate_segment_count,
     validate_background_music,
+    validate_segment_count,
 )
 
 # Set up logging

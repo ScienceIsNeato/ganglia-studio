@@ -1,14 +1,17 @@
-import pytest
-import tempfile
 import os
+import tempfile
+from typing import Union
 from unittest.mock import Mock, patch
-from ganglia_studio.music.music_lib import MusicGenerator, _exponential_backoff
+
+import pytest
+from ganglia_common.logger import Logger
+
+from ganglia_studio.music.backends.foxai_suno import FoxAISunoBackend
 from ganglia_studio.music.backends.meta import MetaMusicBackend
 from ganglia_studio.music.backends.suno_api_org import SunoApiOrgBackend
-from ganglia_studio.music.backends.foxai_suno import FoxAISunoBackend
+from ganglia_studio.music.music_lib import MusicGenerator, _exponential_backoff
 from ganglia_studio.video.config_loader import MusicOptions, TTVConfig
-from typing import Union
-from ganglia_common.logger import Logger
+
 
 @pytest.fixture
 def temp_output_dir():
@@ -50,7 +53,7 @@ class MockSunoBackend(SunoApiOrgBackend):
             return "Failed", 0
         return "Complete", 100
 
-    def get_result(self, job_id: str) -> Union[str, tuple[str, str]]:
+    def get_result(self, job_id: str) -> str | tuple[str, str]:
         self.get_result_called = True
         if self.should_fail:
             return None if not self.with_lyrics else (None, None)
@@ -92,7 +95,7 @@ class DurationTestBackend(SunoApiOrgBackend):
         self.check_progress_called = True
         return "Complete", 100
 
-    def get_result(self, job_id: str) -> Union[str, tuple[str, str]]:
+    def get_result(self, job_id: str) -> str | tuple[str, str]:
         self.get_result_called = True
         return "/mock/path/to/audio.mp3"
 
@@ -112,7 +115,7 @@ class ErrorTestBackend(SunoApiOrgBackend):
         self.check_progress_called = True
         raise self.error_type("Test error")
 
-    def get_result(self, job_id: str) -> Union[str, tuple[str, str]]:
+    def get_result(self, job_id: str) -> str | tuple[str, str]:
         self.get_result_called = True
         raise self.error_type("Test error")
 
@@ -131,7 +134,7 @@ class ThreadTestBackend(SunoApiOrgBackend):
         self.check_progress_called = True
         return "Complete", 100
 
-    def get_result(self, job_id: str) -> Union[str, tuple[str, str]]:
+    def get_result(self, job_id: str) -> str | tuple[str, str]:
         self.get_result_called = True
         return "/mock/path/to/audio.mp3"
 
@@ -157,7 +160,7 @@ class RetryTestBackend(SunoApiOrgBackend):
         self.check_progress_called = True
         return "Complete", 100
 
-    def get_result(self, job_id: str) -> Union[str, tuple[str, str]]:
+    def get_result(self, job_id: str) -> str | tuple[str, str]:
         self.get_result_called = True
         return "/mock/path/to/audio.mp3"
 
@@ -382,7 +385,7 @@ def test_output_path_copy_failure():
 
     with patch('shutil.copy2') as mock_copy:
         # Mock copy2 to simulate failure
-        mock_copy.side_effect = IOError("Mock copy failure")
+        mock_copy.side_effect = OSError("Mock copy failure")
 
         result = generator.get_background_music_from_prompt(
             prompt="test prompt",
@@ -399,7 +402,7 @@ def test_backend_initialization_from_config(monkeypatch):
     """Test that backends are correctly initialized from config."""
     # Mock API key environment variable for FoxAI backend
     monkeypatch.setenv("FOXAI_SUNO_API_KEY", "test-key")
-    
+
     # Test Meta backend initialization
     config_meta = TTVConfig(
         style="test",

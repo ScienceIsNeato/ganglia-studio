@@ -18,24 +18,29 @@ Each test case validates:
 """
 
 import logging
+import os
 import subprocess
 import sys
-import os
+
 import pytest
-from tests.test_helpers import (
-    validate_audio_video_durations,
-    validate_final_video_path,
-    validate_total_duration,
-    validate_closing_credits_duration,
-    validate_segment_count,
-    validate_background_music,
-    validate_gcs_upload,
-    validate_caption_accuracy,
-    get_output_dir_from_logs
-)
 from ganglia_common.utils.file_utils import get_tempdir
-# Note: social_media module not yet migrated to ganglia-studio
-# from ganglia_studio.social_media.youtube_client import YouTubeClient
+
+from tests.test_helpers import (
+    get_output_dir_from_logs,
+    validate_audio_video_durations,
+    validate_background_music,
+    validate_caption_accuracy,
+    validate_closing_credits_duration,
+    validate_final_video_path,
+    validate_gcs_upload,
+    validate_segment_count,
+    validate_total_duration,
+)
+
+try:
+    from ganglia_studio.social_media.youtube_client import YouTubeClient
+except ImportError:  # pragma: no cover - optional dependency
+    YouTubeClient = None
 
 pytestmark = pytest.mark.skip(reason="Smoke test references ganglia_studio.social_media module which is not yet migrated/in scope")
 
@@ -129,6 +134,8 @@ def test_simulated_pipeline_execution():
         # Post results to YouTube if we have a final video
         if final_video_path and os.path.exists(final_video_path):
             try:
+                if YouTubeClient is None:
+                    pytest.skip("YouTubeClient not available")
                 client = YouTubeClient()
                 video_url = client.create_video_post(
                     title="GANGLIA Integration Test: TTV Pipeline (Smoke)",

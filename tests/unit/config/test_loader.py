@@ -1,10 +1,11 @@
 """Test the TTV config loader."""
 
-import unittest
-import os
-
-from ganglia_studio.video.config_loader import load_input, TTVConfig, MusicConfig
 import json
+import os
+import unittest
+
+from ganglia_studio.video.config_loader import MusicConfig, TTVConfig, load_input
+
 
 class TestConfigLoader(unittest.TestCase):
     """Test cases for TTV config loading."""

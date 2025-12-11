@@ -2,8 +2,10 @@
 
 import json
 import os
-from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
+
 from ganglia_common.logger import Logger
+from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
+
 
 def extract_json_from_response(response: str) -> str:
     """Extract JSON content from a potentially markdown-formatted response."""

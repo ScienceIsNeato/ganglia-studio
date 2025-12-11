@@ -2,10 +2,12 @@
 Tests for the movie poster generation functionality.
 """
 
-import unittest
-from unittest.mock import Mock, MagicMock, patch
 import json
+import unittest
+from unittest.mock import MagicMock, Mock, patch
+
 from ganglia_studio.video.story_generation import generate_movie_poster
+
 
 class TestGenerateMoviePoster(unittest.TestCase):
     def setUp(self):
@@ -25,7 +27,7 @@ class TestGenerateMoviePoster(unittest.TestCase):
             "title": "Neon Nights",
             "story": "A detective navigates a neon-lit city"
         })
-        
+
         # Mock OpenAI client response
         mock_client = MagicMock()
         mock_response = MagicMock()
@@ -56,7 +58,7 @@ class TestGenerateMoviePoster(unittest.TestCase):
             "title": "Neon Nights",
             "story": "A detective navigates a neon-lit city"
         })
-        
+
         # Mock DALL-E failure
         mock_client = MagicMock()
         mock_client.images.generate.side_effect = Exception("DALL-E API error")

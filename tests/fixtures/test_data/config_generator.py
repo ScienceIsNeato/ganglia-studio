@@ -2,9 +2,11 @@
 
 import json
 import os
-from typing import Dict, Any
-from query_dispatch import ChatGPTQueryDispatcher
+from typing import Any
+
 from logger import Logger
+from query_dispatch import ChatGPTQueryDispatcher
+
 
 def extract_json_from_response(response: str) -> str:
     """Extract JSON content from a potentially markdown-formatted response."""

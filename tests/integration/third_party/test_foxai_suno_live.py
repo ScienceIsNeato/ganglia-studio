@@ -7,10 +7,13 @@ The tests include audio playback capabilities with skip functionality.
 
 import os
 import time
+
 import pytest
 import requests
+
 from ganglia_studio.music.backends.foxai_suno import FoxAISunoBackend
 from tests.test_helpers import play_media
+
 
 class MockQueryDispatcher:
     def send_query(self, query):

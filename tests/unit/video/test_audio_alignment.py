@@ -94,8 +94,12 @@ def _test_alignment_with_model(model_size: str, tmp_path) -> tuple[set[str], set
     )
     assert captions is not None, "Failed to create word-level captions"
 
-    text_words = set(word.strip().lower() for word in text.split())
-    caption_words = set(word.strip().lower() for caption in captions for word in caption.text.split())
+    text_words = {word.strip().lower() for word in text.split()}
+    caption_words = {
+        word.strip().lower()
+        for caption in captions
+        for word in caption.text.split()
+    }
 
     missing_words = text_words - caption_words
     extra_words = caption_words - text_words

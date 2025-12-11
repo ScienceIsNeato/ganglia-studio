@@ -1,11 +1,13 @@
 import json
 import os
+
 import pytest
+from ganglia_common.logger import Logger
+from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
+from ganglia_common.utils.file_utils import get_config_path
 
 from ganglia_studio.music.lyrics_lib import LyricsGenerator
-from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
-from ganglia_common.logger import Logger
-from ganglia_common.utils.file_utils import get_config_path
+
 
 def count_syllables(word):
     """Count the number of syllables in a word."""
@@ -39,7 +41,7 @@ def count_line_syllables(line):
 def test_generate_lyrics():
     api_key = os.getenv('OPENAI_API_KEY')
     if not api_key:
-        raise EnvironmentError("Environment variable 'OPENAI_API_KEY' is not set.")
+        raise OSError("Environment variable 'OPENAI_API_KEY' is not set.")
 
     story_text = (
         "This is a story about a brave knight named Stephanie, a dragon named Steve, "

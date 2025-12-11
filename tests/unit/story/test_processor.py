@@ -12,16 +12,18 @@ including:
 import json
 import os
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 # Third-party imports
 import pytest
 
 # Local imports
 from ganglia_common.query_dispatch import ChatGPTQueryDispatcher
+from ganglia_common.utils.file_utils import get_tempdir
+
 from ganglia_studio.video.config_loader import MusicConfig, MusicOptions, TTVConfig
 from ganglia_studio.video.story_processor import process_story
-from ganglia_common.utils.file_utils import get_tempdir
+
 
 @pytest.fixture
 def tts_mock():
